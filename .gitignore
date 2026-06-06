@@ -1,0 +1,26 @@
+
+# Environment
+.env
+.env*.local
+
+# MCP / Claude Code
+.mcp.json
+.claude/projects/
+.claude/todos/
+.claude/statsig
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Monorepo build artifacts
+dist/
+dist-ssr/
+
+# Context Engineering
+**/CLAUDE.md
