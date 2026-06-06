@@ -1,0 +1,22 @@
+name: 🖥 Frontend
+description: apps/web 관련 작업 및 버그
+labels: ["frontend"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 작업 내용
+      description: 무엇을 구현하거나 수정해야 하나요?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 배경 / 이유
+      description: 왜 이 작업이 필요한가요?
+  - type: textarea
+    id: checklist
+    attributes:
+      label: 체크리스트
+      value: |
+        - [ ]
