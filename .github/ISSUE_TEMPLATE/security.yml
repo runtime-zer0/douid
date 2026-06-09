@@ -1,0 +1,47 @@
+name: 🔒 Security
+description: 인증/인가 누락, 데이터 노출, 보안 경계 위반 등
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 발생 영역
+      options:
+        - Frontend (apps/web)
+        - Backend (apps/api)
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      options:
+        - Critical — 인증 우회, 민감 데이터 노출
+        - High — 권한 없는 리소스 접근
+        - Medium — 정보 노출, 검증 누락
+        - Low — 기타 보안 개선
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 문제 설명
+      description: 어떤 보안 문제인가요?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 영향 범위
+      description: 어떤 데이터 또는 기능이 영향을 받나요?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: 수정 방향

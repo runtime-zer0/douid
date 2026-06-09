@@ -1,0 +1,44 @@
+name: 🐛 Bug
+description: 오동작, 예외, UI 깨짐 등 버그 리포트
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 발생 영역
+      options:
+        - Frontend (apps/web)
+        - Backend (apps/api)
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 문제 설명
+      description: 어떤 문제가 발생하나요?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+  - type: textarea
+    id: context
+    attributes:
+      label: 환경 / 추가 정보
+      description: 브라우저, OS, 로그, 스크린샷 등
