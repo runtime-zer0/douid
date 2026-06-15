@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-home/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
@@ -35,3 +36,13 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Github Speckit Phase
+/docs/slice
+
+### Claude Code tooling
+.claude/
+.specify/
+
+docker-compose.yaml
+**/appication-dev.yaml
