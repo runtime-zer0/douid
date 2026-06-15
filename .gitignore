@@ -23,5 +23,16 @@ Thumbs.db
 dist/
 dist-ssr/
 
+# Java / Gradle
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+
 # Context Engineering
 **/CLAUDE.md

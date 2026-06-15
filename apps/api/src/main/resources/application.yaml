@@ -1,3 +1,6 @@
 spring:
   application:
     name: douid-brand-api
+
+  jackson:
+    time-zone: UTC
