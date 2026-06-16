@@ -45,4 +45,5 @@ out/
 .specify/
 
 docker-compose.yaml
-**/appication-dev.yaml
+**/application-dev.yaml
+**/application-prod.yaml
