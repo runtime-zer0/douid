@@ -1,29 +1,12 @@
-package kr.douid.brand.category.domain;
+package kr.douid.brand.category.infrastructure.persistence;
 
 import java.util.Optional;
 
-/**
- * 카테고리 상태 변경 포트
- *
- * Aggregate 저장과 복원을 담당한다
- */
-public interface CategoryRepository {
+import org.springframework.data.jpa.repository.JpaRepository;
 
-    /**
-     * 카테고리를 저장
-     *
-     * @param category 저장 대상 카테고리
-     * @return 저장된 카테고리
-     */
-    Category save(Category category);
+import kr.douid.brand.category.domain.Category;
 
-    /**
-     * ID로 카테고리를 조회
-     *
-     * @param id 조회할 카테고리 ID
-     * @return 조회 결과
-     */
-    Optional<Category> findById(Long id);
+public interface CategoryJpaRepository extends JpaRepository<Category, Long> {
 
     /**
      * slug로 카테고리를 조회
@@ -49,11 +32,4 @@ public interface CategoryRepository {
      * @return slug 중복 여부
      */
     boolean existsBySlugAndIdNot(String slug, Long id);
-
-    /**
-     * 카테고리를 삭제
-     *
-     * @param category 삭제 대상 카테고리
-     */
-    void delete(Category category);
 }
