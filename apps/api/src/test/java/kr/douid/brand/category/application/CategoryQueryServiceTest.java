@@ -11,48 +11,48 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import kr.douid.brand.category.domain.Category;
-import kr.douid.brand.category.domain.CategoryRepository;
+import kr.douid.brand.category.application.query.CategoryListItem;
+import kr.douid.brand.category.application.query.CategoryQueryRepository;
+import kr.douid.brand.category.application.query.CategoryQueryService;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryQueryServiceTest {
 
     @Mock
-    private CategoryRepository categoryRepository;
+    private CategoryQueryRepository categoryQueryRepository;
 
     @InjectMocks
     private CategoryQueryService categoryQueryService;
 
     @Test
-    void findAllForAdmin_공개비공개_모두_반환() {
-        Category visible = Category.create("브랜딩", "branding", 1, true);
-        Category hidden = Category.create("내부", "internal", 2, false);
-        given(categoryRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc())
-                .willReturn(List.of(visible, hidden));
+    void getAdminCategoryList_공개비공개_모두_반환() {
+        given(categoryQueryRepository.findAdminCategoryList()).willReturn(List.of(
+                new CategoryListItem(1L, "브랜딩", "branding", 1, true),
+                new CategoryListItem(2L, "내부", "internal", 2, false)
+        ));
 
-        List<CategoryResult> result = categoryQueryService.findAllForAdmin();
+        List<CategoryListItem> result = categoryQueryService.getAdminCategoryList();
 
         assertThat(result).hasSize(2);
     }
 
     @Test
-    void findAllVisible_공개만_반환() {
-        Category visible = Category.create("브랜딩", "branding", 1, true);
-        given(categoryRepository.findAllByVisibleTrueOrderByDisplayOrderAscCreatedAtAsc())
-                .willReturn(List.of(visible));
+    void getPublicCategoryList_공개만_반환() {
+        given(categoryQueryRepository.findPublicCategoryList()).willReturn(List.of(
+                new CategoryListItem(1L, "브랜딩", "branding", 1, true)
+        ));
 
-        List<CategoryResult> result = categoryQueryService.findAllVisible();
+        List<CategoryListItem> result = categoryQueryService.getPublicCategoryList();
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).visible()).isTrue();
     }
 
     @Test
-    void findAllForAdmin_빈_목록() {
-        given(categoryRepository.findAllByOrderByDisplayOrderAscCreatedAtAsc())
-                .willReturn(List.of());
+    void getAdminCategoryList_빈_목록() {
+        given(categoryQueryRepository.findAdminCategoryList()).willReturn(List.of());
 
-        List<CategoryResult> result = categoryQueryService.findAllForAdmin();
+        List<CategoryListItem> result = categoryQueryService.getAdminCategoryList();
 
         assertThat(result).isEmpty();
     }
