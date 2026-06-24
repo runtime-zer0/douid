@@ -10,19 +10,18 @@ class ErrorCodeTest {
 
     @ParameterizedTest
     @EnumSource(ErrorCode.class)
-    void 모든_ErrorCode는_유효한_HTTP_상태와_비어있지않은_code_message를_가진다(ErrorCode errorCode) {
-        assertThat(errorCode.getStatus()).isNotNull();
+    void 모든_ErrorCode는_비어있지않은_code_message를_가진다(ErrorCode errorCode) {
         assertThat(errorCode.getCode()).isNotBlank();
         assertThat(errorCode.getDefaultMessage()).isNotBlank();
     }
 
     @Test
-    void INVALID_INPUT은_400() {
-        assertThat(ErrorCode.INVALID_INPUT.getStatus().value()).isEqualTo(400);
+    void INVALID_INPUT은_공통_입력_오류_코드를_가진다() {
+        assertThat(ErrorCode.INVALID_INPUT.getCode()).isEqualTo("INVALID_INPUT");
     }
 
     @Test
-    void INTERNAL_SERVER_ERROR는_500() {
-        assertThat(ErrorCode.INTERNAL_SERVER_ERROR.getStatus().value()).isEqualTo(500);
+    void INTERNAL_SERVER_ERROR는_공통_서버_오류_코드를_가진다() {
+        assertThat(ErrorCode.INTERNAL_SERVER_ERROR.getCode()).isEqualTo("INTERNAL_ERROR");
     }
 }

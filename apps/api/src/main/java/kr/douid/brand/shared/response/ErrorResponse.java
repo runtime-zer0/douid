@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
-import kr.douid.brand.shared.exception.ErrorCode;
 import lombok.Getter;
 
 /**
@@ -35,35 +34,26 @@ public class ErrorResponse {
     }
 
     /**
-     * 오류 코드 기본 메시지 기반 오류 응답 생성
+     * 코드·메시지 직접 지정 오류 응답 생성
      *
-     * @param errorCode 오류 코드
+     * @param code    오류 코드 문자열
+     * @param message 오류 메시지
      * @return 필드 오류 없는 오류 응답
      */
-    public static ErrorResponse of(ErrorCode errorCode) {
-        return new ErrorResponse(errorCode.getCode(), errorCode.getDefaultMessage(), List.of());
+    public static ErrorResponse of(String code, String message) {
+        return new ErrorResponse(code, message, List.of());
     }
 
     /**
-     * 사용자 정의 메시지 기반 오류 응답 생성
+     * 코드·메시지·필드 오류 직접 지정 오류 응답 생성
      *
-     * @param errorCode 오류 코드
-     * @param message   응답에 노출할 메시지
-     * @return 필드 오류 없는 오류 응답
-     */
-    public static ErrorResponse of(ErrorCode errorCode, String message) {
-        return new ErrorResponse(errorCode.getCode(), message, List.of());
-    }
-
-    /**
-     * 필드 오류 포함 오류 응답 생성
-     *
-     * @param errorCode 오류 코드
-     * @param fields    필드별 오류 목록
+     * @param code    오류 코드 문자열
+     * @param message 오류 메시지
+     * @param fields  필드별 오류 목록
      * @return 필드 오류가 포함된 오류 응답
      */
-    public static ErrorResponse of(ErrorCode errorCode, List<FieldError> fields) {
-        return new ErrorResponse(errorCode.getCode(), errorCode.getDefaultMessage(), fields);
+    public static ErrorResponse of(String code, String message, List<FieldError> fields) {
+        return new ErrorResponse(code, message, fields);
     }
 
     /**

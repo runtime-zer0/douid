@@ -1,4 +1,4 @@
-package kr.douid.brand.shared.exception;
+package kr.douid.brand.shared.presentation;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -16,6 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
+import kr.douid.brand.shared.exception.DomainErrorType;
+import kr.douid.brand.shared.exception.DomainException;
+import kr.douid.brand.shared.exception.IntegrationErrorType;
+import kr.douid.brand.shared.exception.IntegrationException;
+
 class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;
@@ -29,11 +34,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void BusinessException_발생시_해당_에러코드와_HTTP_상태_반환() throws Exception {
-        mockMvc.perform(get("/test/business-exception"))
+    void DomainException_발생시_해당_코드와_HTTP_상태_반환() throws Exception {
+        mockMvc.perform(get("/test/domain-exception"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value("FAILURE"))
-                .andExpect(jsonPath("$.data.code").value("NOT_FOUND"));
+                .andExpect(jsonPath("$.data.code").value("TEST_NOT_FOUND"));
+    }
+
+    @Test
+    void IntegrationException_발생시_해당_코드와_HTTP_상태_반환() throws Exception {
+        mockMvc.perform(get("/test/integration-exception"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.status").value("ERROR"))
+                .andExpect(jsonPath("$.data.code").value("TEST_EXTERNAL_FAILURE"));
     }
 
     @Test
@@ -58,9 +71,14 @@ class GlobalExceptionHandlerTest {
     @RestController
     static class TestController {
 
-        @GetMapping("/test/business-exception")
-        void throwBusiness() {
-            throw new BusinessException(ErrorCode.NOT_FOUND);
+        @GetMapping("/test/domain-exception")
+        void throwDomain() {
+            throw new TestDomainException();
+        }
+
+        @GetMapping("/test/integration-exception")
+        void throwIntegration() {
+            throw new TestIntegrationException();
         }
 
         @PostMapping("/test/validation")
@@ -70,6 +88,18 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/unknown-exception")
         void throwUnknown() {
             throw new RuntimeException("unexpected error");
+        }
+    }
+
+    static class TestDomainException extends DomainException {
+        TestDomainException() {
+            super(DomainErrorType.NOT_FOUND, "TEST_NOT_FOUND", "테스트 도메인 예외");
+        }
+    }
+
+    static class TestIntegrationException extends IntegrationException {
+        TestIntegrationException() {
+            super(IntegrationErrorType.BAD_GATEWAY, "TEST_EXTERNAL_FAILURE", "테스트 연동 예외");
         }
     }
 
