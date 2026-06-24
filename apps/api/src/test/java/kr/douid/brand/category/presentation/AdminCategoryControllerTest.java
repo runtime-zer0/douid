@@ -116,11 +116,11 @@ class AdminCategoryControllerTest {
     }
 
     @Test
-    void delete_정상_204() throws Exception {
+    void delete_정상_200() throws Exception {
         willDoNothing().given(categoryCommandService).deleteCategory(any());
 
         mockMvc.perform(delete("/api/admin/categories/1"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -5,7 +5,6 @@ import kr.douid.brand.category.application.command.CreateCategoryCommand;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-
 @Getter
 @NoArgsConstructor
 public class CreateCategoryRequest {

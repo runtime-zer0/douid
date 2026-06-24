@@ -1,7 +1,9 @@
 package kr.douid.brand.category.presentation;
 
 import java.util.List;
+
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -9,8 +11,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
 import jakarta.validation.Valid;
 import kr.douid.brand.category.application.command.CategoryCommandService;
 import kr.douid.brand.category.application.command.DeleteCategoryCommand;
@@ -37,11 +39,12 @@ public class AdminCategoryController {
      * @return 생성된 카테고리 응답
      */
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CategoryCommandResponse> create(
+    public ResponseEntity<ApiResponse<CategoryCommandResponse>> create(
             @Valid @RequestBody CreateCategoryRequest request) {
-        return ApiResponse.success(CategoryCommandResponse
-                .from(categoryCommandService.createCategory(request.toCommand())));
+        CategoryCommandResponse response = CategoryCommandResponse.from(
+                categoryCommandService.createCategory(request.toCommand()));
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
     /**
@@ -52,21 +55,25 @@ public class AdminCategoryController {
      * @return 수정된 카테고리 응답
      */
     @PutMapping("/{id}")
-    public ApiResponse<CategoryCommandResponse> update(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<CategoryCommandResponse>> update(@PathVariable Long id,
             @Valid @RequestBody UpdateCategoryRequest request) {
-        return ApiResponse.success(CategoryCommandResponse
-                .from(categoryCommandService.updateCategory(request.toCommand(id))));
+        CategoryCommandResponse response = CategoryCommandResponse.from(
+                categoryCommandService.updateCategory(request.toCommand(id)));
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
      * 관리자 카테고리 삭제 요청을 처리
      *
      * @param id 삭제할 카테고리 ID
+     * @return 빈 성공 응답
      */
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         categoryCommandService.deleteCategory(DeleteCategoryCommand.of(id));
+
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     /**
@@ -75,8 +82,11 @@ public class AdminCategoryController {
      * @return 관리자 카테고리 목록 응답
      */
     @GetMapping
-    public ApiResponse<List<CategoryListResponse>> findAll() {
-        return ApiResponse.success(categoryQueryService.getAdminCategoryList().stream()
-                .map(CategoryListResponse::from).toList());
+    public ResponseEntity<ApiResponse<List<CategoryListResponse>>> findAll() {
+        List<CategoryListResponse> response = categoryQueryService.getAdminCategoryList().stream()
+                .map(CategoryListResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
