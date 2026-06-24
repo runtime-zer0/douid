@@ -29,8 +29,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ApiResponse<ErrorResponse>> handleDomainException(DomainException e) {
         ErrorResponse body = ErrorResponse.of(e.getCode(), e.getMessage());
-        return ResponseEntity
-                .status(ErrorHttpStatusMapper.from(e.getType()))
+        return ResponseEntity.status(ErrorHttpStatusMapper.from(e.getType()))
                 .body(ApiResponse.failure(body));
     }
 
@@ -41,10 +40,10 @@ public class GlobalExceptionHandler {
      * @return 예외에 정의된 HTTP 상태와 오류 본문
      */
     @ExceptionHandler(IntegrationException.class)
-    public ResponseEntity<ApiResponse<ErrorResponse>> handleIntegrationException(IntegrationException e) {
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleIntegrationException(
+            IntegrationException e) {
         ErrorResponse body = ErrorResponse.of(e.getCode(), e.getMessage());
-        return ResponseEntity
-                .status(ErrorHttpStatusMapper.from(e.getType()))
+        return ResponseEntity.status(ErrorHttpStatusMapper.from(e.getType()))
                 .body(ApiResponse.error(body));
     }
 
@@ -55,16 +54,18 @@ public class GlobalExceptionHandler {
      * @return 400 응답과 필드별 오류 목록
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<ErrorResponse>> handleValidationException(MethodArgumentNotValidException e) {
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleValidationException(
+            MethodArgumentNotValidException e) {
         BindingResult bindingResult = e.getBindingResult();
+
         List<ErrorResponse.FieldError> fieldErrors = bindingResult.getFieldErrors().stream()
                 .map(fe -> new ErrorResponse.FieldError(fe.getField(), fe.getDefaultMessage()))
                 .toList();
+
         ErrorResponse body = ErrorResponse.of(ErrorCode.INVALID_INPUT.getCode(),
                 ErrorCode.INVALID_INPUT.getDefaultMessage(), fieldErrors);
-        return ResponseEntity
-                .badRequest()
-                .body(ApiResponse.failure(body));
+
+        return ResponseEntity.badRequest().body(ApiResponse.failure(body));
     }
 
     /**
@@ -77,9 +78,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<ErrorResponse>> handleException(Exception e) {
         ErrorResponse body = ErrorResponse.of(ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
                 ErrorCode.INTERNAL_SERVER_ERROR.getDefaultMessage());
-        return ResponseEntity
-                .internalServerError()
-                .body(ApiResponse.error(body));
+        return ResponseEntity.internalServerError().body(ApiResponse.error(body));
     }
 
 }
