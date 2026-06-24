@@ -17,7 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import kr.douid.brand.category.application.query.CategoryListItem;
 import kr.douid.brand.category.application.query.CategoryQueryService;
 import kr.douid.brand.shared.config.SecurityConfig;
-import kr.douid.brand.shared.exception.GlobalExceptionHandler;
+import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 
 @WebMvcTest(PublicCategoryController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})

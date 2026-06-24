@@ -23,9 +23,9 @@ import kr.douid.brand.category.application.command.DeleteCategoryCommand;
 import kr.douid.brand.category.application.command.UpdateCategoryCommand;
 import kr.douid.brand.category.domain.Category;
 import kr.douid.brand.category.domain.CategoryDeletionPolicy;
+import kr.douid.brand.category.domain.CategoryNotFoundException;
 import kr.douid.brand.category.domain.CategoryRepository;
-import kr.douid.brand.shared.exception.BusinessException;
-import kr.douid.brand.shared.exception.ErrorCode;
+import kr.douid.brand.category.domain.CategorySlugDuplicateException;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryCommandServiceTest {
@@ -62,9 +62,7 @@ class CategoryCommandServiceTest {
         given(categoryRepository.existsBySlug("branding")).willReturn(true);
 
         assertThatThrownBy(() -> categoryCommandService.createCategory(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+                .isInstanceOf(CategorySlugDuplicateException.class);
     }
 
     @Test
@@ -100,9 +98,7 @@ class CategoryCommandServiceTest {
         given(categoryRepository.existsBySlugAndIdNot("ux", 1L)).willReturn(true);
 
         assertThatThrownBy(() -> categoryCommandService.updateCategory(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+                .isInstanceOf(CategorySlugDuplicateException.class);
     }
 
     @Test
@@ -111,9 +107,7 @@ class CategoryCommandServiceTest {
         given(categoryRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> categoryCommandService.updateCategory(command))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+                .isInstanceOf(CategoryNotFoundException.class);
     }
 
     @Test
@@ -131,13 +125,11 @@ class CategoryCommandServiceTest {
     void deleteCategory_삭제정책_예외() {
         Category category = Category.create("브랜딩", "branding", 1, true);
         given(categoryRepository.findById(1L)).willReturn(Optional.of(category));
-        willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND))
+        willThrow(new CategoryNotFoundException())
                 .given(categoryDeletionPolicy).validate(category);
 
         assertThatThrownBy(() -> categoryCommandService.deleteCategory(DeleteCategoryCommand.of(1L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+                .isInstanceOf(CategoryNotFoundException.class);
 
         then(categoryRepository).should().findById(1L);
         then(categoryRepository).should(never()).delete(any());
@@ -148,8 +140,6 @@ class CategoryCommandServiceTest {
         given(categoryRepository.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> categoryCommandService.deleteCategory(DeleteCategoryCommand.of(99L)))
-                .isInstanceOf(BusinessException.class)
-                .extracting(e -> ((BusinessException) e).getErrorCode())
-                .isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+                .isInstanceOf(CategoryNotFoundException.class);
     }
 }

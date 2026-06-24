@@ -9,7 +9,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-import kr.douid.brand.shared.exception.GlobalExceptionHandler;
+import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 import kr.douid.brand.shared.presentation.HealthController;
 
 @WebMvcTest(HealthController.class)

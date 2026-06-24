@@ -8,9 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.douid.brand.category.domain.Category;
 import kr.douid.brand.category.domain.CategoryDeletionPolicy;
+import kr.douid.brand.category.domain.CategoryNotFoundException;
 import kr.douid.brand.category.domain.CategoryRepository;
-import kr.douid.brand.shared.exception.BusinessException;
-import kr.douid.brand.shared.exception.ErrorCode;
+import kr.douid.brand.category.domain.CategorySlugDuplicateException;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -31,11 +31,11 @@ public class CategoryCommandService {
      *
      * @param command 카테고리 생성 입력값
      * @return 생성된 카테고리 결과
-     * @throws BusinessException slug가 이미 존재하는 경우
+     * @throws CategorySlugDuplicateException slug가 이미 존재하는 경우
      */
     public CategoryResult createCategory(CreateCategoryCommand command) {
         if (categoryRepository.existsBySlug(command.slug())) {
-            throw new BusinessException(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+            throw new CategorySlugDuplicateException();
         }
         try {
             Category category = Category.create(
@@ -46,7 +46,7 @@ public class CategoryCommandService {
             );
             return CategoryResult.from(categoryRepository.save(category));
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+            throw new CategorySlugDuplicateException();
         }
     }
 
@@ -55,19 +55,20 @@ public class CategoryCommandService {
      *
      * @param command 카테고리 수정 입력값
      * @return 수정된 카테고리 결과
-     * @throws BusinessException 카테고리를 찾을 수 없거나 slug가 이미 존재하는 경우
+     * @throws CategoryNotFoundException       카테고리를 찾을 수 없는 경우
+     * @throws CategorySlugDuplicateException  slug가 이미 존재하는 경우
      */
     public CategoryResult updateCategory(UpdateCategoryCommand command) {
         Category category = categoryRepository.findById(command.id())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+                .orElseThrow(CategoryNotFoundException::new);
         if (categoryRepository.existsBySlugAndIdNot(command.slug(), command.id())) {
-            throw new BusinessException(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+            throw new CategorySlugDuplicateException();
         }
         try {
             category.update(command.name(), command.slug(), command.displayOrder(), command.visible());
             return CategoryResult.from(category);
         } catch (DataIntegrityViolationException e) {
-            throw new BusinessException(ErrorCode.CATEGORY_SLUG_DUPLICATE);
+            throw new CategorySlugDuplicateException();
         }
     }
 
@@ -75,11 +76,11 @@ public class CategoryCommandService {
      * 기존 카테고리를 삭제
      *
      * @param command 카테고리 삭제 입력값
-     * @throws BusinessException 카테고리를 찾을 수 없는 경우
+     * @throws CategoryNotFoundException 카테고리를 찾을 수 없는 경우
      */
     public void deleteCategory(DeleteCategoryCommand command) {
         Category category = categoryRepository.findById(command.id())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+                .orElseThrow(CategoryNotFoundException::new);
         deletionPolicies.forEach(policy -> policy.validate(category));
         categoryRepository.delete(category);
     }

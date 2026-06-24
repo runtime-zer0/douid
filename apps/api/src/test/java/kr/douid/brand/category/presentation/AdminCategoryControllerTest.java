@@ -11,15 +11,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -27,12 +28,10 @@ import kr.douid.brand.category.application.command.CategoryCommandService;
 import kr.douid.brand.category.application.command.CategoryResult;
 import kr.douid.brand.category.application.query.CategoryListItem;
 import kr.douid.brand.category.application.query.CategoryQueryService;
+import kr.douid.brand.category.domain.CategoryNotFoundException;
+import kr.douid.brand.category.domain.CategorySlugDuplicateException;
 import kr.douid.brand.shared.config.SecurityConfig;
-import kr.douid.brand.shared.exception.BusinessException;
-import kr.douid.brand.shared.exception.ErrorCode;
-import kr.douid.brand.shared.exception.GlobalExceptionHandler;
-
-import java.time.LocalDateTime;
+import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 
 @WebMvcTest(AdminCategoryController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
@@ -66,7 +65,7 @@ class AdminCategoryControllerTest {
     @Test
     void create_슬러그_중복_409() throws Exception {
         given(categoryCommandService.createCategory(any()))
-                .willThrow(new BusinessException(ErrorCode.CATEGORY_SLUG_DUPLICATE));
+                .willThrow(new CategorySlugDuplicateException());
 
         mockMvc.perform(post("/api/admin/categories")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -105,7 +104,7 @@ class AdminCategoryControllerTest {
     @Test
     void update_미존재_404() throws Exception {
         given(categoryCommandService.updateCategory(any()))
-                .willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND));
+                .willThrow(new CategoryNotFoundException());
 
         mockMvc.perform(put("/api/admin/categories/99")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -126,7 +125,7 @@ class AdminCategoryControllerTest {
 
     @Test
     void delete_미존재_404() throws Exception {
-        willThrow(new BusinessException(ErrorCode.CATEGORY_NOT_FOUND))
+        willThrow(new CategoryNotFoundException())
                 .given(categoryCommandService).deleteCategory(any());
 
         mockMvc.perform(delete("/api/admin/categories/99"))
