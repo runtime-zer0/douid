@@ -53,6 +53,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/media/**").permitAll()
                         .requestMatchers("/api/admin/**").authenticated()
                         .anyRequest().denyAll())
                 .exceptionHandling(ex -> ex
