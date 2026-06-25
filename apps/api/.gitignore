@@ -43,6 +43,7 @@ out/
 ### Claude Code tooling
 .claude/
 .specify/
+specs
 
 docker-compose.yaml
 **/application-dev.yaml

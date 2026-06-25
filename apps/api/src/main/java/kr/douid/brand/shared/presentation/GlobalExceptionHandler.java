@@ -7,6 +7,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import kr.douid.brand.shared.exception.DomainException;
 import kr.douid.brand.shared.exception.ErrorCode;
@@ -65,6 +66,19 @@ public class GlobalExceptionHandler {
         ErrorResponse body = ErrorResponse.of(ErrorCode.INVALID_INPUT.getCode(),
                 ErrorCode.INVALID_INPUT.getDefaultMessage(), fieldErrors);
 
+        return ResponseEntity.badRequest().body(ApiResponse.failure(body));
+    }
+
+    /**
+     * 파일 크기 초과 예외 응답 변환
+     *
+     * @param e multipart 파일 크기 제한 초과 시 발생하는 예외
+     * @return 400 응답과 오류 본문
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleMaxUploadSizeExceededException(
+            MaxUploadSizeExceededException e) {
+        ErrorResponse body = ErrorResponse.of(ErrorCode.INVALID_INPUT.getCode(), "허용된 최대 파일 크기를 초과했습니다.");
         return ResponseEntity.badRequest().body(ApiResponse.failure(body));
     }
 
