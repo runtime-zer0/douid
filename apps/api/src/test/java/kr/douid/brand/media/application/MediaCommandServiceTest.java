@@ -7,9 +7,11 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
 import java.io.ByteArrayInputStream;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,18 +19,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import kr.douid.brand.media.application.command.MediaCommandService;
 import kr.douid.brand.media.application.command.MediaResult;
 import kr.douid.brand.media.application.command.MediaUploadCommand;
-import kr.douid.brand.media.application.command.MediaUploadUseCase;
 import kr.douid.brand.media.application.port.FileStoragePort;
 import kr.douid.brand.media.application.port.StoredFile;
 import kr.douid.brand.media.domain.EmptyMediaFileException;
 import kr.douid.brand.media.domain.InvalidMediaFileTypeException;
 import kr.douid.brand.media.domain.Media;
+import kr.douid.brand.media.domain.MediaInUseException;
+import kr.douid.brand.media.domain.MediaNotFoundException;
 import kr.douid.brand.media.domain.MediaRepository;
+import kr.douid.brand.work.application.port.WorkReferenceChecker;
 
 @ExtendWith(MockitoExtension.class)
-class MediaUploadUseCaseTest {
+class MediaCommandServiceTest {
 
     @Mock
     private FileStoragePort fileStoragePort;
@@ -36,11 +41,14 @@ class MediaUploadUseCaseTest {
     @Mock
     private MediaRepository mediaRepository;
 
-    private MediaUploadUseCase mediaUploadUseCase;
+    @Mock
+    private WorkReferenceChecker workReferenceChecker;
+
+    private MediaCommandService mediaCommandService;
 
     @BeforeEach
     void setUp() {
-        mediaUploadUseCase = new MediaUploadUseCase(fileStoragePort, mediaRepository);
+        mediaCommandService = new MediaCommandService(fileStoragePort, mediaRepository, workReferenceChecker);
     }
 
     @Test
@@ -54,7 +62,7 @@ class MediaUploadUseCaseTest {
         Media saved = Media.upload("photo.jpg", "uuid.jpg", "uploads/media/uuid.jpg", "image/jpeg", 1024L);
         given(mediaRepository.save(any())).willReturn(saved);
 
-        MediaResult result = mediaUploadUseCase.upload(command);
+        MediaResult result = mediaCommandService.upload(command);
 
         assertThat(result.originalFilename()).isEqualTo("photo.jpg");
         assertThat(result.contentType()).isEqualTo("image/jpeg");
@@ -66,7 +74,7 @@ class MediaUploadUseCaseTest {
         MediaUploadCommand command = new MediaUploadCommand(
                 "photo.jpg", "image/jpeg", new ByteArrayInputStream(new byte[0]), 0L);
 
-        assertThatThrownBy(() -> mediaUploadUseCase.upload(command))
+        assertThatThrownBy(() -> mediaCommandService.upload(command))
                 .isInstanceOf(EmptyMediaFileException.class);
 
         then(fileStoragePort).should(never()).store(any(), any(), any(), anyLong());
@@ -78,7 +86,7 @@ class MediaUploadUseCaseTest {
         MediaUploadCommand command = new MediaUploadCommand(
                 "doc.pdf", "application/pdf", new ByteArrayInputStream(new byte[]{1}), 1024L);
 
-        assertThatThrownBy(() -> mediaUploadUseCase.upload(command))
+        assertThatThrownBy(() -> mediaCommandService.upload(command))
                 .isInstanceOf(InvalidMediaFileTypeException.class);
 
         then(fileStoragePort).should(never()).store(any(), any(), any(), anyLong());
@@ -89,7 +97,7 @@ class MediaUploadUseCaseTest {
         MediaUploadCommand command = new MediaUploadCommand(
                 "photo.jpg", null, new ByteArrayInputStream(new byte[]{1}), 1024L);
 
-        assertThatThrownBy(() -> mediaUploadUseCase.upload(command))
+        assertThatThrownBy(() -> mediaCommandService.upload(command))
                 .isInstanceOf(InvalidMediaFileTypeException.class);
     }
 
@@ -102,9 +110,56 @@ class MediaUploadUseCaseTest {
         given(fileStoragePort.store(anyString(), anyString(), any(), anyLong())).willReturn(storedFile);
         given(mediaRepository.save(any())).willThrow(new RuntimeException("DB 저장 실패"));
 
-        assertThatThrownBy(() -> mediaUploadUseCase.upload(command))
+        assertThatThrownBy(() -> mediaCommandService.upload(command))
                 .isInstanceOf(RuntimeException.class);
 
         then(fileStoragePort).should().delete("uploads/media/uuid.jpg");
+    }
+
+    @Test
+    void delete_정상_삭제() {
+        Media media = Media.upload("photo.jpg", "uuid.jpg", "uploads/media/uuid.jpg", "image/jpeg", 1024L);
+        given(mediaRepository.findById(1L)).willReturn(Optional.of(media));
+        given(workReferenceChecker.existsByMediaId(media.getId())).willReturn(false);
+
+        mediaCommandService.delete(1L);
+
+        then(fileStoragePort).should().delete("uploads/media/uuid.jpg");
+        then(mediaRepository).should().delete(media);
+    }
+
+    @Test
+    void delete_미존재_예외() {
+        given(mediaRepository.findById(99L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> mediaCommandService.delete(99L))
+                .isInstanceOf(MediaNotFoundException.class);
+
+        then(mediaRepository).should(never()).delete(any());
+    }
+
+    @Test
+    void delete_파일삭제_실패해도_메타데이터_삭제() {
+        Media media = Media.upload("photo.jpg", "uuid.jpg", "uploads/media/uuid.jpg", "image/jpeg", 1024L);
+        given(mediaRepository.findById(1L)).willReturn(Optional.of(media));
+        given(workReferenceChecker.existsByMediaId(media.getId())).willReturn(false);
+        willThrow(new RuntimeException("파일 삭제 실패")).given(fileStoragePort).delete(any());
+
+        mediaCommandService.delete(1L);
+
+        then(mediaRepository).should().delete(media);
+    }
+
+    @Test
+    void delete_작업물에서_사용중_예외() {
+        Media media = Media.upload("photo.jpg", "uuid.jpg", "uploads/media/uuid.jpg", "image/jpeg", 1024L);
+        given(mediaRepository.findById(1L)).willReturn(Optional.of(media));
+        given(workReferenceChecker.existsByMediaId(media.getId())).willReturn(true);
+
+        assertThatThrownBy(() -> mediaCommandService.delete(1L))
+                .isInstanceOf(MediaInUseException.class);
+
+        then(fileStoragePort).should(never()).delete(any());
+        then(mediaRepository).should(never()).delete(any());
     }
 }

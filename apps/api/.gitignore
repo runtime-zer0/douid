@@ -48,3 +48,4 @@ specs
 docker-compose.yaml
 **/application-dev.yaml
 **/application-prod.yaml
+uploads/**

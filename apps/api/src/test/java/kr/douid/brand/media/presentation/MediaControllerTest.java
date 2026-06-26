@@ -29,9 +29,8 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import kr.douid.brand.media.application.command.MediaDeleteCommandService;
+import kr.douid.brand.media.application.command.MediaCommandService;
 import kr.douid.brand.media.application.command.MediaResult;
-import kr.douid.brand.media.application.command.MediaUploadUseCase;
 import kr.douid.brand.media.application.query.MediaFileResult;
 import kr.douid.brand.media.application.query.MediaQueryService;
 import kr.douid.brand.media.application.query.MediaView;
@@ -50,10 +49,7 @@ class MediaControllerTest {
     private MockMvc mockMvc;
 
     @MockitoBean
-    private MediaUploadUseCase mediaUploadUseCase;
-
-    @MockitoBean
-    private MediaDeleteCommandService mediaDeleteCommandService;
+    private MediaCommandService mediaCommandService;
 
     @MockitoBean
     private MediaQueryService mediaQueryService;
@@ -62,7 +58,7 @@ class MediaControllerTest {
     void upload_정상_201() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
-        given(mediaUploadUseCase.upload(any())).willReturn(fakeMediaResult(1L));
+        given(mediaCommandService.upload(any())).willReturn(fakeMediaResult(1L));
 
         mockMvc.perform(multipart("/api/admin/media").file(file))
                 .andExpect(status().isCreated())
@@ -75,7 +71,7 @@ class MediaControllerTest {
     void upload_빈파일_400() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "photo.jpg", "image/jpeg", new byte[0]);
-        given(mediaUploadUseCase.upload(any())).willThrow(new EmptyMediaFileException());
+        given(mediaCommandService.upload(any())).willThrow(new EmptyMediaFileException());
 
         mockMvc.perform(multipart("/api/admin/media").file(file))
                 .andExpect(status().isBadRequest())
@@ -86,7 +82,7 @@ class MediaControllerTest {
     void upload_이미지아닌파일_400() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "doc.pdf", "application/pdf", new byte[]{1});
-        given(mediaUploadUseCase.upload(any())).willThrow(new InvalidMediaFileTypeException());
+        given(mediaCommandService.upload(any())).willThrow(new InvalidMediaFileTypeException());
 
         mockMvc.perform(multipart("/api/admin/media").file(file))
                 .andExpect(status().isBadRequest())
@@ -128,7 +124,7 @@ class MediaControllerTest {
 
     @Test
     void delete_정상_200() throws Exception {
-        willDoNothing().given(mediaDeleteCommandService).delete(anyLong());
+        willDoNothing().given(mediaCommandService).delete(anyLong());
 
         mockMvc.perform(delete("/api/admin/media/1"))
                 .andExpect(status().isOk())
@@ -137,7 +133,7 @@ class MediaControllerTest {
 
     @Test
     void delete_미존재_404() throws Exception {
-        willThrow(new MediaNotFoundException()).given(mediaDeleteCommandService).delete(99L);
+        willThrow(new MediaNotFoundException()).given(mediaCommandService).delete(99L);
 
         mockMvc.perform(delete("/api/admin/media/99"))
                 .andExpect(status().isNotFound())

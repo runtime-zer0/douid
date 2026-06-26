@@ -18,10 +18,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import kr.douid.brand.media.application.command.MediaDeleteCommandService;
+import kr.douid.brand.media.application.command.MediaCommandService;
 import kr.douid.brand.media.application.command.MediaResult;
 import kr.douid.brand.media.application.command.MediaUploadCommand;
-import kr.douid.brand.media.application.command.MediaUploadUseCase;
 import kr.douid.brand.media.application.query.MediaFileResult;
 import kr.douid.brand.media.application.query.MediaQueryService;
 import kr.douid.brand.media.application.query.MediaView;
@@ -45,8 +44,7 @@ public class MediaController {
     private static final String MEDIA_BASE_URL = "/api/media";
     private static final String ADMIN_MEDIA_BASE = "/api/admin/media";
 
-    private final MediaUploadUseCase mediaUploadUseCase;
-    private final MediaDeleteCommandService mediaDeleteCommandService;
+    private final MediaCommandService mediaCommandService;
     private final MediaQueryService mediaQueryService;
 
     /**
@@ -69,7 +67,7 @@ public class MediaController {
                 file.getInputStream(),
                 file.getSize());
 
-        MediaResult result = mediaUploadUseCase.upload(command);
+        MediaResult result = mediaCommandService.upload(command);
         MediaUploadResponse response = MediaUploadResponse.from(result, MEDIA_BASE_URL);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
@@ -110,7 +108,7 @@ public class MediaController {
      */
     @DeleteMapping(ADMIN_MEDIA_BASE + "/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        mediaDeleteCommandService.delete(id);
+        mediaCommandService.delete(id);
         return ResponseEntity.ok(ApiResponse.success());
     }
 
