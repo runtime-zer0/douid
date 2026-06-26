@@ -2,6 +2,8 @@ package kr.douid.brand.shared.presentation;
 
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -80,6 +82,22 @@ public class GlobalExceptionHandler {
             MaxUploadSizeExceededException e) {
         ErrorResponse body = ErrorResponse.of(ErrorCode.INVALID_INPUT.getCode(), "허용된 최대 파일 크기를 초과했습니다.");
         return ResponseEntity.badRequest().body(ApiResponse.failure(body));
+    }
+
+    /**
+     * DB constraint 위반 예외의 409 응답 변환
+     *
+     * 사전 검증을 통과한 뒤 동시성 race로 인해 발생한 충돌을 처리한다.
+     *
+     * @param e 발생한 {@link DataIntegrityViolationException}
+     * @return 409 응답과 충돌 오류 본문
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<ErrorResponse>> handleDataIntegrityViolationException(
+            DataIntegrityViolationException e) {
+        ErrorResponse body = ErrorResponse.of(ErrorCode.CONFLICT.getCode(),
+                ErrorCode.CONFLICT.getDefaultMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.failure(body));
     }
 
     /**

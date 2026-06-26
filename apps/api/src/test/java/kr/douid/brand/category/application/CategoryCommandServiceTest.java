@@ -5,10 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -22,10 +20,11 @@ import kr.douid.brand.category.application.command.CreateCategoryCommand;
 import kr.douid.brand.category.application.command.DeleteCategoryCommand;
 import kr.douid.brand.category.application.command.UpdateCategoryCommand;
 import kr.douid.brand.category.domain.Category;
-import kr.douid.brand.category.domain.CategoryDeletionPolicy;
+import kr.douid.brand.category.domain.CategoryHasWorksException;
 import kr.douid.brand.category.domain.CategoryNotFoundException;
 import kr.douid.brand.category.domain.CategoryRepository;
 import kr.douid.brand.category.domain.CategorySlugDuplicateException;
+import kr.douid.brand.work.application.port.WorkReferenceChecker;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryCommandServiceTest {
@@ -34,13 +33,16 @@ class CategoryCommandServiceTest {
     private CategoryRepository categoryRepository;
 
     @Mock
-    private CategoryDeletionPolicy categoryDeletionPolicy;
+    private WorkReferenceChecker workReferenceChecker;
 
     private CategoryCommandService categoryCommandService;
 
     @org.junit.jupiter.api.BeforeEach
     void setUp() {
-        categoryCommandService = new CategoryCommandService(categoryRepository, List.of(categoryDeletionPolicy));
+        categoryCommandService = new CategoryCommandService(
+                categoryRepository,
+                workReferenceChecker
+        );
     }
 
     @Test
@@ -114,24 +116,22 @@ class CategoryCommandServiceTest {
     void deleteCategory_정상_삭제() {
         Category category = Category.create("브랜딩", "branding", 1, true);
         given(categoryRepository.findById(1L)).willReturn(Optional.of(category));
+        given(workReferenceChecker.existsByCategoryId(category.getId())).willReturn(false);
 
         categoryCommandService.deleteCategory(DeleteCategoryCommand.of(1L));
 
-        then(categoryDeletionPolicy).should().validate(category);
         then(categoryRepository).should().delete(category);
     }
 
     @Test
-    void deleteCategory_삭제정책_예외() {
+    void deleteCategory_작업물_참조중_예외() {
         Category category = Category.create("브랜딩", "branding", 1, true);
         given(categoryRepository.findById(1L)).willReturn(Optional.of(category));
-        willThrow(new CategoryNotFoundException())
-                .given(categoryDeletionPolicy).validate(category);
+        given(workReferenceChecker.existsByCategoryId(category.getId())).willReturn(true);
 
         assertThatThrownBy(() -> categoryCommandService.deleteCategory(DeleteCategoryCommand.of(1L)))
-                .isInstanceOf(CategoryNotFoundException.class);
+                .isInstanceOf(CategoryHasWorksException.class);
 
-        then(categoryRepository).should().findById(1L);
         then(categoryRepository).should(never()).delete(any());
     }
 

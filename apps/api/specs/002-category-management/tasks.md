@@ -30,9 +30,7 @@
 
 - [ ] T003 [P] `category/domain/Category.java` 엔티티 구현 (`BaseTimeEntity` 상속, `name`/`slug`/`displayOrder`/`visible` 필드, `protected` 기본 생성자, `Category.create()` static factory, `category.update()` domain method)
 - [ ] T004 [P] `category/domain/CategoryRepository.java` 포트 인터페이스 정의 (`save`, `findById`, `findBySlug`, `existsBySlug`, `existsBySlugAndIdNot`, `findAllByOrderByDisplayOrderAscCreatedAtAsc`, `findAllByVisibleTrueOrderByDisplayOrderAscCreatedAtAsc`, `delete`)
-- [ ] T005 [P] `category/domain/CategoryDeletionPolicy.java` 인터페이스 정의 (`void validate(Category category)` — 위반 시 `BusinessException` 던짐)
-- [ ] T006 `category/infrastructure/JpaCategoryRepository.java` Spring Data JPA 구현체 (`CategoryRepository` 구현, `@Repository`)
-- [ ] T007 `category/infrastructure/DefaultCategoryDeletionPolicy.java` 기본 구현 (현재 단계는 아무 검사 없이 통과)
+- [ ] T005 `category/infrastructure/JpaCategoryRepository.java` Spring Data JPA 구현체 (`CategoryRepository` 구현, `@Repository`)
 
 **Checkpoint**: Category 도메인 기반 준비 완료 → US 구현 시작 가능
 
@@ -73,11 +71,11 @@
 
 ## Phase 5: User Story 3 — 카테고리 삭제 (Priority: P2)
 
-**Goal**: 관리자가 카테고리를 삭제할 수 있다. 미존재 시 404. `CategoryDeletionPolicy`로 확장 가능.
+**Goal**: 관리자가 카테고리를 삭제할 수 있다. 미존재 시 404. 작업물이 연결된 카테고리는 삭제할 수 없다.
 
 **Independent Test**: 생성된 카테고리를 `DELETE /api/admin/categories/{id}`로 삭제 → 204 확인. 미존재 ID → 404 확인.
 
-- [ ] T019 [US3] `CategoryCommandService.java`에 `deleteCategory` 메서드 추가 (미존재 → `CATEGORY_NOT_FOUND`, `CategoryDeletionPolicy` 순회 후 `delete`)
+- [ ] T019 [US3] `CategoryCommandService.java`에 `deleteCategory` 메서드 추가 (미존재 → `CATEGORY_NOT_FOUND`, `WorkReferenceChecker` 참조 확인 후 `delete`)
 - [ ] T020 [US3] `AdminCategoryController.java`에 삭제 엔드포인트 추가 (`DELETE /api/admin/categories/{id}` → 204 반환)
 - [ ] T021 [US3] `CategoryCommandServiceTest.java`에 삭제 흐름 테스트 추가 (정상 삭제, 미존재 예외)
 - [ ] T022 [US3] `AdminCategoryControllerTest.java`에 삭제 HTTP 계약 테스트 추가
@@ -148,7 +146,7 @@
 
 ```bash
 # Phase 2 병렬 실행 가능
-T003 Category 엔티티, T004 CategoryRepository, T005 CategoryDeletionPolicy
+T003 Category 엔티티, T004 CategoryRepository, T005 JpaCategoryRepository
 
 # Phase 3 내부 병렬 가능
 T009 CreateCategoryRequest, T010 CategoryResponse (서로 다른 파일)
@@ -186,5 +184,5 @@ T031 CategoryTest, T032 JpaCategoryRepositoryTest
 - `[P]` 태스크는 다른 파일을 수정하므로 병렬 실행 가능
 - `[USN]` 레이블로 각 태스크가 어느 스토리에 속하는지 추적 가능
 - 각 Phase Checkpoint에서 독립 검증 후 다음 Phase 진행
-- `DefaultCategoryDeletionPolicy`는 현재 단계에서 항상 허용, Work 단계에서 `WorkLinkedCategoryDeletionPolicy`로 교체
+- Work 참조 삭제 제한은 category application delete flow가 work application port를 호출하는 방식으로 처리한다.
 - Admin API의 `.permitAll()` 임시 설정은 Auth 단계 완료 후 `.authenticated()`로 되돌린다

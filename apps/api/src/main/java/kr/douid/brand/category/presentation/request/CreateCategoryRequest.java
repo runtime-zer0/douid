@@ -2,23 +2,13 @@ package kr.douid.brand.category.presentation.request;
 
 import jakarta.validation.constraints.NotBlank;
 import kr.douid.brand.category.application.command.CreateCategoryCommand;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 
-@Getter
-@NoArgsConstructor
-public class CreateCategoryRequest {
-
-    @NotBlank
-    private String name;
-
-    @NotBlank
-    private String slug;
-
-    private int displayOrder;
-
-    private boolean visible = true;
-
+public record CreateCategoryRequest(
+        @NotBlank String name,
+        @NotBlank String slug,
+        int displayOrder,
+        Boolean visible
+) {
     /**
      * 요청값을 카테고리 생성 command로 변환
      *
@@ -29,7 +19,7 @@ public class CreateCategoryRequest {
                 name,
                 slug,
                 displayOrder,
-                visible
+                visible == null || visible
         );
     }
 }

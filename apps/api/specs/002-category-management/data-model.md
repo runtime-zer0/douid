@@ -53,18 +53,9 @@ API 응답에 사용하는 불변 구조체. presentation 레이어에만 존재
 
 ---
 
-### CategoryDeletionPolicy (Port interface)
+### WorkReferenceChecker (External application port)
 
-삭제 가능 여부를 판단하는 정책 확장 지점. domain 레이어에 위치.
-
-```
-interface CategoryDeletionPolicy {
-    void validate(Category category);  // 위반 시 BusinessException 던짐
-}
-```
-
-- `DefaultCategoryDeletionPolicy`: 현재 단계에서는 아무 검사 없이 통과
-- Work 단계에서 `WorkLinkedCategoryDeletionPolicy`로 교체 예정
+카테고리 삭제 가능 여부 중 Work 참조 여부를 확인하는 외부 application port. category application delete flow에서 호출하며, category는 work infrastructure/domain 구현체에 직접 의존하지 않는다.
 
 ## 관계
 
@@ -77,13 +68,9 @@ CategoryRepository (domain port)
   ↓ implements
 JpaCategoryRepository (infrastructure)
 
-CategoryDeletionPolicy (domain port)
-  ↓ implements
-DefaultCategoryDeletionPolicy (infrastructure)
-
 CategoryCommandService / CategoryQueryService (application)
   → CategoryRepository (port)
-  → CategoryDeletionPolicy (port)
+  → WorkReferenceChecker (work application port)
 
 AdminCategoryController / PublicCategoryController (presentation)
   → CategoryCommandService / CategoryQueryService (application)

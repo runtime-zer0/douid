@@ -106,13 +106,12 @@
 - **FR-008**: 공개 사이트에서는 `visible = true`인 카테고리만 조회할 수 있어야 한다.
 - **FR-009**: 카테고리 목록은 `displayOrder` ASC, `createdAt` ASC 순으로 정렬되어야 한다.
 - **FR-010**: 카테고리 이름과 슬러그는 비어 있을 수 없다.
-- **FR-011**: 카테고리 삭제 시 작업물 연결 여부를 확인하는 정책 확장 지점이 준비되어야 한다.
-- **FR-012**: category 영역은 work, media, chat, ai 영역에 직접 의존하지 않아야 한다.
+- **FR-011**: 카테고리 삭제 시 작업물 연결 여부를 work application port로 확인하고, 연결된 작업물이 있으면 삭제를 거부해야 한다.
+- **FR-012**: category 영역은 work infrastructure/domain 구현체에 직접 의존하지 않아야 하며, 필요한 Work 참조 확인은 work application port를 통해 수행할 수 있다.
 
 ### Key Entities
 
 - **Category**: 작업물 분류 단위 — 이름, 슬러그(unique), 노출 순서, 공개 여부, 생성/수정 시각 포함
-- **CategoryDeletionPolicy**: 삭제 가능 여부 판단 확장 지점 — 현재 단계는 기본 구현(항상 허용), Work 단계에서 교체
 
 ## Success Criteria *(mandatory)*
 
@@ -122,11 +121,11 @@
 - **SC-002**: 중복 슬러그로 요청 시 100% `CATEGORY_SLUG_DUPLICATE` 에러 응답이 반환된다.
 - **SC-003**: 공개 카테고리 목록에서 비공개 카테고리가 0건 포함된다.
 - **SC-004**: 카테고리 목록이 항상 `displayOrder` ASC, `createdAt` ASC 기준으로 반환된다.
-- **SC-005**: category 패키지가 work, media, chat, ai 패키지를 단 하나도 import하지 않는다.
+- **SC-005**: category 패키지가 work infrastructure/domain 구현체를 직접 import하지 않는다.
 
 ## Assumptions
 
 - 관리자 인증은 이번 단계 범위 밖이며, Admin API는 임시로 인증 없이 접근 가능하다. (Auth 단계에서 `.authenticated()`로 전환)
 - 슬러그는 대소문자를 구분한다.
 - 카테고리 목록은 페이지네이션 없이 전체 반환한다. (카테고리 수가 제한적이라는 전제)
-- Work 연결 검사는 현재 단계에서 실제 구현하지 않으며, 항상 삭제를 허용하는 기본 정책을 사용한다.
+- Work 연결 검사는 category application delete flow에서 work application port를 호출해 수행한다.

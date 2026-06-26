@@ -1,22 +1,20 @@
 package kr.douid.brand.category.application.command;
 
-import java.util.List;
-
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.douid.brand.category.domain.Category;
-import kr.douid.brand.category.domain.CategoryDeletionPolicy;
+import kr.douid.brand.category.domain.CategoryHasWorksException;
 import kr.douid.brand.category.domain.CategoryNotFoundException;
 import kr.douid.brand.category.domain.CategoryRepository;
 import kr.douid.brand.category.domain.CategorySlugDuplicateException;
+import kr.douid.brand.work.application.port.WorkReferenceChecker;
 import lombok.RequiredArgsConstructor;
 
 /**
  * 카테고리 상태 변경 유스케이스를 처리하는 서비스
  *
- * 생성, 수정, 삭제 흐름과 삭제 정책 검증을 담당한다
+ * 생성, 수정, 삭제 흐름과 Work 참조 무결성 확인을 담당한다
  */
 @Service
 @RequiredArgsConstructor
@@ -24,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class CategoryCommandService {
 
     private final CategoryRepository categoryRepository;
-    private final List<CategoryDeletionPolicy> deletionPolicies;
+    private final WorkReferenceChecker workReferenceChecker;
 
     /**
      * 새 카테고리를 생성
@@ -37,17 +35,13 @@ public class CategoryCommandService {
         if (categoryRepository.existsBySlug(command.slug())) {
             throw new CategorySlugDuplicateException();
         }
-        try {
-            Category category = Category.create(
-                    command.name(),
-                    command.slug(),
-                    command.displayOrder(),
-                    command.visible()
-            );
-            return CategoryResult.from(categoryRepository.save(category));
-        } catch (DataIntegrityViolationException e) {
-            throw new CategorySlugDuplicateException();
-        }
+        Category category = Category.create(
+                command.name(),
+                command.slug(),
+                command.displayOrder(),
+                command.visible()
+        );
+        return CategoryResult.from(categoryRepository.save(category));
     }
 
     /**
@@ -64,12 +58,8 @@ public class CategoryCommandService {
         if (categoryRepository.existsBySlugAndIdNot(command.slug(), command.id())) {
             throw new CategorySlugDuplicateException();
         }
-        try {
-            category.update(command.name(), command.slug(), command.displayOrder(), command.visible());
-            return CategoryResult.from(category);
-        } catch (DataIntegrityViolationException e) {
-            throw new CategorySlugDuplicateException();
-        }
+        category.update(command.name(), command.slug(), command.displayOrder(), command.visible());
+        return CategoryResult.from(category);
     }
 
     /**
@@ -77,11 +67,14 @@ public class CategoryCommandService {
      *
      * @param command 카테고리 삭제 입력값
      * @throws CategoryNotFoundException 카테고리를 찾을 수 없는 경우
+     * @throws CategoryHasWorksException 작업물이 연결된 경우
      */
     public void deleteCategory(DeleteCategoryCommand command) {
         Category category = categoryRepository.findById(command.id())
                 .orElseThrow(CategoryNotFoundException::new);
-        deletionPolicies.forEach(policy -> policy.validate(category));
+        if (workReferenceChecker.existsByCategoryId(category.getId())) {
+            throw new CategoryHasWorksException();
+        }
         categoryRepository.delete(category);
     }
 }

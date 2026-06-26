@@ -2,7 +2,6 @@ package kr.douid.brand.media.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -41,8 +40,8 @@ class JpaMediaRepositoryTest {
 
     @Test
     void save_저장_후_조회() {
-        Media media = Media.upload("photo.jpg", "uuid-photo.jpg",
-                "uploads/media/uuid-photo.jpg", "image/jpeg", 1024L);
+        Media media = Media.upload("photo.jpg", "uuid-photo.jpg", "uploads/media/uuid-photo.jpg",
+                "image/jpeg", 1024L);
 
         Media saved = repository.save(media);
 
@@ -56,12 +55,12 @@ class JpaMediaRepositoryTest {
 
     @Test
     void storedFilename_유니크_제약_위반() {
-        repository.save(Media.upload("photo1.jpg", "uuid.jpg",
-                "uploads/media/uuid.jpg", "image/jpeg", 1024L));
+        repository.save(Media.upload("photo1.jpg", "uuid.jpg", "uploads/media/uuid.jpg",
+                "image/jpeg", 1024L));
 
         assertThatThrownBy(() -> {
-            repository.save(Media.upload("photo2.jpg", "uuid.jpg",
-                    "uploads/media/uuid2.jpg", "image/png", 2048L));
+            repository.save(Media.upload("photo2.jpg", "uuid.jpg", "uploads/media/uuid2.jpg",
+                    "image/png", 2048L));
             repository.flush();
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
