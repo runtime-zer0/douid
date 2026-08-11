@@ -18,6 +18,7 @@ import kr.douid.brand.work.application.query.PublicWorkListItem;
 import kr.douid.brand.work.application.query.WorkCategoryView;
 import kr.douid.brand.work.application.query.WorkMediaView;
 import kr.douid.brand.work.application.query.WorkQueryRepository;
+import kr.douid.brand.work.domain.WorkMediaRole;
 import kr.douid.brand.work.domain.WorkVisibility;
 import static kr.douid.brand.category.domain.QCategory.category;
 import static kr.douid.brand.media.domain.QMedia.media;
@@ -71,7 +72,7 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
                 ))
                 .from(work)
                 .leftJoin(category).on(category.id.eq(work.categoryId))
-                .leftJoin(workMedia).on(workMedia.work.eq(work).and(workMedia.role.eq(kr.douid.brand.work.domain.WorkMediaRole.THUMBNAIL)))
+                .leftJoin(workMedia).on(workMedia.work.eq(work).and(workMedia.role.eq(WorkMediaRole.THUMBNAIL)))
                 .leftJoin(media).on(media.id.eq(workMedia.mediaId))
                 .orderBy(work.createdAt.desc(), work.id.desc())
                 .offset(pageable.getOffset())
@@ -100,10 +101,12 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
      */
     @Override
     public Optional<AdminWorkDetail> findAdminWorkDetail(Long id) {
-        var basic = queryFactory
-                .select(work.id, work.title, work.slug, work.summary, work.description,
+        AdminWorkBasicProjection basic = queryFactory
+                .select(Projections.constructor(
+                        AdminWorkBasicProjection.class,
+                        work.id, work.title, work.slug, work.summary, work.description,
                         work.visibility, work.createdAt, work.updatedAt,
-                        category.id, category.name, category.slug, category.visible)
+                        category.id, category.name, category.slug, category.visible))
                 .from(work)
                 .leftJoin(category).on(category.id.eq(work.categoryId))
                 .where(work.id.eq(id))
@@ -114,23 +117,23 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
         }
 
         WorkCategoryView categoryView = new WorkCategoryProjection(
-                basic.get(category.id), basic.get(category.name),
-                basic.get(category.slug), basic.get(category.visible))
+                basic.categoryId(), basic.categoryName(),
+                basic.categorySlug(), basic.categoryVisible())
                 .toView();
 
         List<WorkMediaView> mediaItems = findMediaItems(id);
 
         return Optional.of(new AdminWorkDetail(
-                basic.get(work.id),
-                basic.get(work.title),
-                basic.get(work.slug),
-                basic.get(work.summary),
-                basic.get(work.description),
-                basic.get(work.visibility),
+                basic.workId(),
+                basic.title(),
+                basic.slug(),
+                basic.summary(),
+                basic.description(),
+                basic.visibility(),
                 categoryView,
                 mediaItems,
-                basic.get(work.createdAt),
-                basic.get(work.updatedAt)));
+                basic.createdAt(),
+                basic.updatedAt()));
     }
 
     /**
@@ -148,47 +151,6 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
     }
 
     /**
-     * slug로 공개 작업물 상세를 조회
-     *
-     * 미존재, Work 비공개, Category 비공개 세 경우 모두 Public Visibility Policy where절에서
-     * 자연스럽게 걸러져 별도 분기 없이 동일하게 {@code Optional.empty()}를 반환한다.
-     *
-     * @param slug 작업물 슬러그
-     * @return 공개 작업물 상세 (조건 불충족 시 empty)
-     */
-    @Override
-    public Optional<PublicWorkDetail> findPublicWorkDetailBySlug(String slug) {
-        var basic = queryFactory
-                .select(work.id, work.title, work.slug, work.summary, work.description,
-                        category.id, category.name, category.slug, category.visible)
-                .from(work)
-                .innerJoin(category).on(category.id.eq(work.categoryId))
-                .where(work.slug.eq(slug)
-                        .and(work.visibility.eq(WorkVisibility.VISIBLE))
-                        .and(category.visible.isTrue()))
-                .fetchOne();
-
-        if (basic == null) {
-            return Optional.empty();
-        }
-
-        WorkCategoryView categoryView = new WorkCategoryProjection(
-                basic.get(category.id), basic.get(category.name),
-                basic.get(category.slug), basic.get(category.visible))
-                .toView();
-
-        List<WorkMediaView> mediaItems = findMediaItems(basic.get(work.id));
-
-        return Optional.of(new PublicWorkDetail(
-                basic.get(work.title),
-                basic.get(work.slug),
-                basic.get(work.summary),
-                basic.get(work.description),
-                categoryView,
-                mediaItems));
-    }
-
-    /**
      * 공개 카테고리 slug 기준으로 공개 작업물 목록을 페이지네이션 조회
      *
      * {@link #findPublicWorkList}와 동일한 Public Visibility Policy join에 카테고리 slug 조건만 추가한다.
@@ -203,6 +165,16 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
         return findPublicWorkListInternal(categorySlug, pageable);
     }
 
+    /**
+     * 공개 작업물 목록 조회 공통 구현
+     *
+     * {@link #findPublicWorkList}와 {@link #findPublicWorkListByCategorySlug}가 공유하는 join/정렬/페이징을
+     * 한 곳에 모으고, categorySlug 유무로 where절 조건만 다르게 조립한다.
+     *
+     * @param categorySlug 카테고리 슬러그 (null이면 전체 공개 작업물 대상)
+     * @param pageable     페이지네이션 파라미터
+     * @return 공개 작업물 목록 페이지
+     */
     private Page<PublicWorkListItem> findPublicWorkListInternal(String categorySlug, Pageable pageable) {
         var predicate = work.visibility.eq(WorkVisibility.VISIBLE).and(category.visible.isTrue());
         if (categorySlug != null) {
@@ -210,13 +182,16 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
         }
 
         List<PublicWorkListItem> content = queryFactory
-                .select(work.title, work.slug, work.summary,
+                .select(Projections.constructor(
+                        PublicWorkListProjection.class,
+                        work.title, work.slug, work.summary,
                         category.id, category.name, category.slug, category.visible,
                         media.id, workMedia.role, workMedia.sortOrder, workMedia.altText,
-                        media.filePath, media.originalFilename)
+                        media.filePath, media.originalFilename
+                ))
                 .from(work)
                 .innerJoin(category).on(category.id.eq(work.categoryId))
-                .leftJoin(workMedia).on(workMedia.work.eq(work).and(workMedia.role.eq(kr.douid.brand.work.domain.WorkMediaRole.THUMBNAIL)))
+                .leftJoin(workMedia).on(workMedia.work.eq(work).and(workMedia.role.eq(WorkMediaRole.THUMBNAIL)))
                 .leftJoin(media).on(media.id.eq(workMedia.mediaId))
                 .where(predicate)
                 .orderBy(work.createdAt.desc(), work.id.desc())
@@ -224,18 +199,7 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
                 .limit(pageable.getPageSize())
                 .fetch()
                 .stream()
-                .map(row -> new PublicWorkListItem(
-                        row.get(work.title),
-                        row.get(work.slug),
-                        row.get(work.summary),
-                        new WorkCategoryProjection(
-                                row.get(category.id), row.get(category.name),
-                                row.get(category.slug), row.get(category.visible))
-                                .toView(),
-                        new WorkMediaProjection(
-                                row.get(media.id), row.get(workMedia.role), row.get(workMedia.sortOrder),
-                                row.get(workMedia.altText), row.get(media.filePath), row.get(media.originalFilename))
-                                .toView()))
+                .map(PublicWorkListProjection::toItem)
                 .toList();
 
         long total = queryFactory
@@ -246,6 +210,49 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
                 .fetchOne();
 
         return new PageImpl<>(content, pageable, total);
+    }
+
+    /**
+     * slug로 공개 작업물 상세를 조회
+     *
+     * 미존재, Work 비공개, Category 비공개 세 경우 모두 Public Visibility Policy where절에서
+     * 자연스럽게 걸러져 별도 분기 없이 동일하게 {@code Optional.empty()}를 반환한다.
+     *
+     * @param slug 작업물 슬러그
+     * @return 공개 작업물 상세 (조건 불충족 시 empty)
+     */
+    @Override
+    public Optional<PublicWorkDetail> findPublicWorkDetailBySlug(String slug) {
+        PublicWorkBasicProjection basic = queryFactory
+                .select(Projections.constructor(
+                        PublicWorkBasicProjection.class,
+                        work.id, work.title, work.slug, work.summary, work.description,
+                        category.id, category.name, category.slug, category.visible))
+                .from(work)
+                .innerJoin(category).on(category.id.eq(work.categoryId))
+                .where(work.slug.eq(slug)
+                        .and(work.visibility.eq(WorkVisibility.VISIBLE))
+                        .and(category.visible.isTrue()))
+                .fetchOne();
+
+        if (basic == null) {
+            return Optional.empty();
+        }
+
+        WorkCategoryView categoryView = new WorkCategoryProjection(
+                basic.categoryId(), basic.categoryName(),
+                basic.categorySlug(), basic.categoryVisible())
+                .toView();
+
+        List<WorkMediaView> mediaItems = findMediaItems(basic.workId());
+
+        return Optional.of(new PublicWorkDetail(
+                basic.title(),
+                basic.slug(),
+                basic.summary(),
+                basic.description(),
+                categoryView,
+                mediaItems));
     }
 
     private List<WorkMediaView> findMediaItems(Long workId) {
