@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -42,7 +43,7 @@ import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 
 @WebMvcTest(MediaController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser
+@WithMockUser(roles = "ADMIN")
 class MediaControllerTest {
 
     @Autowired
@@ -60,7 +61,7 @@ class MediaControllerTest {
                 "file", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
         given(mediaCommandService.upload(any())).willReturn(fakeMediaResult(1L));
 
-        mockMvc.perform(multipart("/api/admin/media").file(file))
+        mockMvc.perform(multipart("/api/admin/media").file(file).with(csrf()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.id").value(1L))
@@ -73,7 +74,7 @@ class MediaControllerTest {
                 "file", "photo.jpg", "image/jpeg", new byte[0]);
         given(mediaCommandService.upload(any())).willThrow(new EmptyMediaFileException());
 
-        mockMvc.perform(multipart("/api/admin/media").file(file))
+        mockMvc.perform(multipart("/api/admin/media").file(file).with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data.code").value("EMPTY_FILE"));
     }
@@ -84,7 +85,7 @@ class MediaControllerTest {
                 "file", "doc.pdf", "application/pdf", new byte[]{1});
         given(mediaCommandService.upload(any())).willThrow(new InvalidMediaFileTypeException());
 
-        mockMvc.perform(multipart("/api/admin/media").file(file))
+        mockMvc.perform(multipart("/api/admin/media").file(file).with(csrf()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.data.code").value("INVALID_FILE_TYPE"));
     }
@@ -126,7 +127,7 @@ class MediaControllerTest {
     void delete_정상_200() throws Exception {
         willDoNothing().given(mediaCommandService).delete(anyLong());
 
-        mockMvc.perform(delete("/api/admin/media/1"))
+        mockMvc.perform(delete("/api/admin/media/1").with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"));
     }
@@ -135,7 +136,7 @@ class MediaControllerTest {
     void delete_미존재_404() throws Exception {
         willThrow(new MediaNotFoundException()).given(mediaCommandService).delete(99L);
 
-        mockMvc.perform(delete("/api/admin/media/99"))
+        mockMvc.perform(delete("/api/admin/media/99").with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.data.code").value("MEDIA_NOT_FOUND"));
     }
@@ -146,7 +147,7 @@ class MediaControllerTest {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
 
-        mockMvc.perform(multipart("/api/admin/media").file(file))
+        mockMvc.perform(multipart("/api/admin/media").file(file).with(csrf()))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.data.code").value("UNAUTHORIZED"));
     }

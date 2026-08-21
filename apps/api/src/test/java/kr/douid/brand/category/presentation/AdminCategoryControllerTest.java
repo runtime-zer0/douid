@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,7 +36,7 @@ import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 
 @WebMvcTest(AdminCategoryController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser
+@WithMockUser(roles = "ADMIN")
 class AdminCategoryControllerTest {
 
     @Autowired
@@ -53,6 +54,7 @@ class AdminCategoryControllerTest {
                 .willReturn(fakeCategoryResult(1L, "브랜딩", "branding", 1, true));
 
         mockMvc.perform(post("/api/admin/categories")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"브랜딩","slug":"branding","displayOrder":1,"visible":true}
@@ -68,6 +70,7 @@ class AdminCategoryControllerTest {
                 .willThrow(new CategorySlugDuplicateException());
 
         mockMvc.perform(post("/api/admin/categories")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"브랜딩","slug":"branding","displayOrder":1,"visible":true}
@@ -79,6 +82,7 @@ class AdminCategoryControllerTest {
     @Test
     void create_이름_빈값_400() throws Exception {
         mockMvc.perform(post("/api/admin/categories")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"","slug":"branding","displayOrder":1,"visible":true}
@@ -93,6 +97,7 @@ class AdminCategoryControllerTest {
                 .willReturn(fakeCategoryResult(1L, "UX", "ux", 2, false));
 
         mockMvc.perform(put("/api/admin/categories/1")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"UX","slug":"ux","displayOrder":2,"visible":false}
@@ -107,6 +112,7 @@ class AdminCategoryControllerTest {
                 .willThrow(new CategoryNotFoundException());
 
         mockMvc.perform(put("/api/admin/categories/99")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"UX","slug":"ux","displayOrder":2,"visible":false}
@@ -119,7 +125,7 @@ class AdminCategoryControllerTest {
     void delete_정상_200() throws Exception {
         willDoNothing().given(categoryCommandService).deleteCategory(any());
 
-        mockMvc.perform(delete("/api/admin/categories/1"))
+        mockMvc.perform(delete("/api/admin/categories/1").with(csrf()))
                 .andExpect(status().isOk());
     }
 
@@ -128,7 +134,7 @@ class AdminCategoryControllerTest {
         willThrow(new CategoryNotFoundException())
                 .given(categoryCommandService).deleteCategory(any());
 
-        mockMvc.perform(delete("/api/admin/categories/99"))
+        mockMvc.perform(delete("/api/admin/categories/99").with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.data.code").value("CATEGORY_NOT_FOUND"));
     }
@@ -149,6 +155,7 @@ class AdminCategoryControllerTest {
     @WithAnonymousUser
     void create_미인증_401() throws Exception {
         mockMvc.perform(post("/api/admin/categories")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"브랜딩","slug":"branding","displayOrder":1,"visible":true}

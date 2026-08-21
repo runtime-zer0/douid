@@ -1,41 +1,76 @@
 package kr.douid.brand.shared.config;
 
-import java.io.IOException;
+import java.util.List;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import tools.jackson.databind.ObjectMapper;
 
-import kr.douid.brand.shared.exception.ErrorCode;
-import kr.douid.brand.shared.response.ApiResponse;
-import kr.douid.brand.shared.response.ErrorResponse;
+import kr.douid.brand.shared.security.JsonAccessDeniedHandler;
+import kr.douid.brand.shared.security.JsonAuthenticationEntryPoint;
 
 /**
  * Spring Security 필터 체인 설정
  *
- * 세션 없는 stateless 정책 사용
- * public/admin 경로 분리 및 미인증 401 JSON 응답 처리
+ * Session 기반 인증 정책 사용
+ * public/admin 경로 분리, 미인증 401·인가 실패 403 JSON 응답 처리
  */
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
 
     private final ObjectMapper objectMapper;
+    private final CorsProperties corsProperties;
 
     /**
      * 보안 설정 객체 생성
      *
-     * @param objectMapper 401 응답 직렬화에 사용할 Jackson ObjectMapper
+     * @param objectMapper   401/403 응답 직렬화에 사용할 Jackson ObjectMapper
+     * @param corsProperties credential 포함 요청을 허용할 Origin 목록
      */
-    public SecurityConfig(ObjectMapper objectMapper) {
+    public SecurityConfig(ObjectMapper objectMapper, CorsProperties corsProperties) {
         this.objectMapper = objectMapper;
+        this.corsProperties = corsProperties;
+    }
+
+    /**
+     * 비밀번호 인코더 빈 등록
+     *
+     * @return {@link BCryptPasswordEncoder}
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * 로그인 컨트롤러가 직접 사용할 {@link AuthenticationManager} 노출
+     *
+     * @param configuration Spring Security의 기본 인증 설정
+     * @return 구성된 {@link AuthenticationManager}
+     * @throws Exception 빈 조회 실패 시
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
+            throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     /**
@@ -48,39 +83,42 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .cors(Customizer.withDefaults())
+                .securityContext(context ->
+                        context.securityContextRepository(new HttpSessionSecurityContextRepository()))
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/media/**").permitAll()
-                        .requestMatchers("/api/admin/**").authenticated()
+                        .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/csrf-token").permitAll()
+                        .requestMatchers("/api/auth/**").authenticated()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().denyAll())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(this::handleUnauthorized));
+                        .authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper))
+                        .accessDeniedHandler(new JsonAccessDeniedHandler(objectMapper)));
 
         return http.build();
     }
 
     /**
-     * 미인증 요청의 401 JSON 응답 작성
+     * credential 포함 요청을 허용할 CORS 정책 구성
      *
-     * @param request       HTTP 요청
-     * @param response      HTTP 응답
-     * @param authException 인증 실패 예외
-     * @throws IOException 응답 쓰기 실패 시
+     * @return 등록된 Origin에 한해 credential 포함 요청을 허용하는 {@link CorsConfigurationSource}
      */
-    private void handleUnauthorized(
-            jakarta.servlet.http.HttpServletRequest request,
-            jakarta.servlet.http.HttpServletResponse response,
-            org.springframework.security.core.AuthenticationException authException
-    ) throws IOException {
-        response.setStatus(401);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
-        ApiResponse<ErrorResponse> body = ApiResponse.failure(ErrorResponse.of(
-                ErrorCode.UNAUTHORIZED.getCode(),
-                ErrorCode.UNAUTHORIZED.getDefaultMessage()));
-        response.getWriter().write(objectMapper.writeValueAsString(body));
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }

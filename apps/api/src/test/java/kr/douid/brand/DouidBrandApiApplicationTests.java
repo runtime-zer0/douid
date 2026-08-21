@@ -21,7 +21,7 @@ class DouidBrandApiApplicationTests {
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
         registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
         registry.add("spring.sql.init.mode", () -> "never");
     }
 

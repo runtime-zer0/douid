@@ -35,7 +35,7 @@ import kr.douid.brand.work.domain.WorkVisibility;
 
 @WebMvcTest(AdminWorkController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser
+@WithMockUser(roles = "ADMIN")
 class AdminWorkControllerTest {
 
     @Autowired
