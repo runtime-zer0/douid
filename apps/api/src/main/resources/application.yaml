@@ -14,3 +14,7 @@ media:
   upload:
     dir: ./uploads/media
     max-size: 10485760
+
+app:
+  security:
+    allowed-origins: http://localhost:3000

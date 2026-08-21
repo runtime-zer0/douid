@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +35,7 @@ import kr.douid.brand.work.domain.WorkVisibility;
 
 @WebMvcTest(WorkController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser
+@WithMockUser(roles = "ADMIN")
 class WorkControllerTest {
 
     @Autowired
@@ -48,7 +49,7 @@ class WorkControllerTest {
         given(workCommandService.create(any()))
                 .willReturn(new WorkResult(1L, WorkVisibility.VISIBLE));
 
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -73,7 +74,7 @@ class WorkControllerTest {
         given(workCommandService.create(any()))
                 .willThrow(new WorkSlugDuplicateException());
 
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isConflict())
@@ -85,7 +86,7 @@ class WorkControllerTest {
         given(workCommandService.create(any()))
                 .willThrow(new CategoryNotFoundException());
 
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isNotFound())
@@ -97,7 +98,7 @@ class WorkControllerTest {
         given(workCommandService.create(any()))
                 .willThrow(new MediaNotFoundException());
 
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isNotFound())
@@ -106,7 +107,7 @@ class WorkControllerTest {
 
     @Test
     void create_제목_빈값_400() throws Exception {
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"title":"","slug":"brand-renewal","visibility":"VISIBLE","mediaItems":[]}
@@ -120,7 +121,7 @@ class WorkControllerTest {
         given(workCommandService.update(any()))
                 .willReturn(new WorkResult(1L, WorkVisibility.HIDDEN));
 
-        mockMvc.perform(put("/api/admin/works/1")
+        mockMvc.perform(put("/api/admin/works/1").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isOk())
@@ -132,7 +133,7 @@ class WorkControllerTest {
         given(workCommandService.update(any()))
                 .willThrow(new WorkNotFoundException());
 
-        mockMvc.perform(put("/api/admin/works/99")
+        mockMvc.perform(put("/api/admin/works/99").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isNotFound())
@@ -143,7 +144,7 @@ class WorkControllerTest {
     void delete_정상_204() throws Exception {
         willDoNothing().given(workCommandService).delete(anyLong());
 
-        mockMvc.perform(delete("/api/admin/works/1"))
+        mockMvc.perform(delete("/api/admin/works/1").with(csrf()))
                 .andExpect(status().isNoContent());
     }
 
@@ -151,7 +152,7 @@ class WorkControllerTest {
     void delete_미존재_404() throws Exception {
         willThrow(new WorkNotFoundException()).given(workCommandService).delete(99L);
 
-        mockMvc.perform(delete("/api/admin/works/99"))
+        mockMvc.perform(delete("/api/admin/works/99").with(csrf()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.data.code").value("WORK_NOT_FOUND"));
     }
@@ -161,7 +162,7 @@ class WorkControllerTest {
         given(workCommandService.changeVisibility(any()))
                 .willReturn(new WorkResult(1L, WorkVisibility.VISIBLE));
 
-        mockMvc.perform(patch("/api/admin/works/1/visibility")
+        mockMvc.perform(patch("/api/admin/works/1/visibility").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"visibility":"VISIBLE"}
@@ -173,7 +174,7 @@ class WorkControllerTest {
     @Test
     @WithAnonymousUser
     void create_미인증_401() throws Exception {
-        mockMvc.perform(post("/api/admin/works")
+        mockMvc.perform(post("/api/admin/works").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateJson()))
                 .andExpect(status().isUnauthorized())
