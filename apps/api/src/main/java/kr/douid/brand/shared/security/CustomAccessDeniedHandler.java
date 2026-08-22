@@ -17,7 +17,7 @@ import kr.douid.brand.shared.response.ErrorResponse;
 /**
  * 인가 실패 요청에 대한 403 JSON 응답 작성
  */
-public class JsonAccessDeniedHandler implements AccessDeniedHandler {
+public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper;
 
@@ -26,7 +26,7 @@ public class JsonAccessDeniedHandler implements AccessDeniedHandler {
      *
      * @param objectMapper 403 응답 직렬화에 사용할 Jackson ObjectMapper
      */
-    public JsonAccessDeniedHandler(ObjectMapper objectMapper) {
+    public CustomAccessDeniedHandler(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 

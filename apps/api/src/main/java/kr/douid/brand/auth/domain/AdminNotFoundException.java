@@ -3,16 +3,16 @@ package kr.douid.brand.auth.domain;
 import kr.douid.brand.shared.exception.DomainException;
 
 /**
- * 로그인 자격 증명 검증에 실패했을 때 발생하는 예외
+ * 인증된 이메일에 해당하는 관리자 계정을 찾을 수 없을 때 발생하는 예외
  *
- * 계정 미존재, 비밀번호 불일치, 비활성 계정을 모두 동일하게 취급한다
+ * 세션은 유효하지만 조회 시점에 계정이 삭제·변경된 경우에 발생한다
  */
-public class AuthenticationFailedException extends DomainException {
+public class AdminNotFoundException extends DomainException {
 
     /**
      * 기본 메시지로 예외 생성
      */
-    public AuthenticationFailedException() {
+    public AdminNotFoundException() {
         super(AuthErrorCode.AUTHENTICATION_FAILED.getType(),
                 AuthErrorCode.AUTHENTICATION_FAILED.getCode(),
                 AuthErrorCode.AUTHENTICATION_FAILED.getDefaultMessage());
