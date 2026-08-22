@@ -17,7 +17,7 @@ import kr.douid.brand.shared.response.ErrorResponse;
 /**
  * 미인증 요청에 대한 401 JSON 응답 작성
  */
-public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
 
@@ -26,7 +26,7 @@ public class JsonAuthenticationEntryPoint implements AuthenticationEntryPoint {
      *
      * @param objectMapper 401 응답 직렬화에 사용할 Jackson ObjectMapper
      */
-    public JsonAuthenticationEntryPoint(ObjectMapper objectMapper) {
+    public CustomAuthenticationEntryPoint(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 

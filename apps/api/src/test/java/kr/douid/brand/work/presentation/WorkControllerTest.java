@@ -23,6 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import kr.douid.brand.auth.application.AuthenticationService;
 import kr.douid.brand.category.domain.CategoryNotFoundException;
 import kr.douid.brand.media.domain.MediaNotFoundException;
 import kr.douid.brand.shared.config.SecurityConfig;
@@ -40,6 +41,9 @@ class WorkControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private AuthenticationService authenticationService;
 
     @MockitoBean
     private WorkCommandService workCommandService;

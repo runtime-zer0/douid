@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import kr.douid.brand.auth.application.AuthenticationService;
 import kr.douid.brand.category.application.query.CategoryListItem;
 import kr.douid.brand.category.application.query.CategoryQueryService;
 import kr.douid.brand.shared.config.SecurityConfig;
@@ -25,6 +26,9 @@ class PublicCategoryControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private AuthenticationService authenticationService;
 
     @MockitoBean
     private CategoryQueryService categoryQueryService;

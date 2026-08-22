@@ -14,7 +14,9 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -22,8 +24,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import tools.jackson.databind.ObjectMapper;
 
-import kr.douid.brand.shared.security.JsonAccessDeniedHandler;
-import kr.douid.brand.shared.security.JsonAuthenticationEntryPoint;
+import kr.douid.brand.auth.application.AuthenticationService;
+import kr.douid.brand.shared.security.CustomAccessDeniedHandler;
+import kr.douid.brand.shared.security.CustomAuthenticationEntryPoint;
+import kr.douid.brand.shared.security.CustomLoginAuthenticationFilter;
+import kr.douid.brand.shared.security.CustomLoginFailureHandler;
+import kr.douid.brand.shared.security.CustomLoginSuccessHandler;
+import kr.douid.brand.shared.security.CustomLogoutSuccessHandler;
 
 /**
  * Spring Security 필터 체인 설정
@@ -61,7 +68,7 @@ public class SecurityConfig {
     }
 
     /**
-     * 로그인 컨트롤러가 직접 사용할 {@link AuthenticationManager} 노출
+     * 필터 체인 내부에서 공유할 {@link AuthenticationManager} 노출
      *
      * @param configuration Spring Security의 기본 인증 설정
      * @return 구성된 {@link AuthenticationManager}
@@ -74,19 +81,43 @@ public class SecurityConfig {
     }
 
     /**
+     * 인증 정보를 세션에 저장·복원하는 저장소 노출
+     *
+     * 로그인 성공 핸들러와 필터 체인이 동일한 인스턴스를 공유해야 한다
+     *
+     * @return 세션 기반 {@link SecurityContextRepository}
+     */
+    @Bean
+    public SecurityContextRepository securityContextRepository() {
+        return new HttpSessionSecurityContextRepository();
+    }
+
+    /**
      * HTTP 보안 필터 체인 구성
      *
-     * @param http HttpSecurity 빌더
+     * @param http                     HttpSecurity 빌더
+     * @param authenticationManager    로그인 필터가 위임할 인증 관리자
+     * @param securityContextRepository 로그인 성공 시 인증 정보를 저장할 저장소
+     * @param authenticationService    로그인 성공 시 관리자 정보를 조회할 서비스
      * @return 구성된 {@link SecurityFilterChain}
      * @throws Exception 필터 체인 구성 실패 시
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationManager authenticationManager,
+            SecurityContextRepository securityContextRepository,
+            AuthenticationService authenticationService) throws Exception {
+        CustomLoginAuthenticationFilter loginFilter = new CustomLoginAuthenticationFilter(
+                authenticationManager,
+                objectMapper,
+                new CustomLoginSuccessHandler(authenticationService, securityContextRepository, objectMapper),
+                new CustomLoginFailureHandler(objectMapper));
+
         http
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .cors(Customizer.withDefaults())
-                .securityContext(context ->
-                        context.securityContextRepository(new HttpSessionSecurityContextRepository()))
+                .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
@@ -98,8 +129,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().denyAll())
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(new JsonAuthenticationEntryPoint(objectMapper))
-                        .accessDeniedHandler(new JsonAccessDeniedHandler(objectMapper)));
+                        .authenticationEntryPoint(new CustomAuthenticationEntryPoint(objectMapper))
+                        .accessDeniedHandler(new CustomAccessDeniedHandler(objectMapper)))
+                .logout(logout -> logout
+                        .logoutUrl("/api/auth/logout")
+                        .logoutSuccessHandler(new CustomLogoutSuccessHandler(objectMapper)))
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

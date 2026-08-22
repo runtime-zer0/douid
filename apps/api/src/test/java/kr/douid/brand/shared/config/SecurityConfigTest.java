@@ -111,6 +111,24 @@ class SecurityConfigTest {
     }
 
     @Test
+    void 비밀번호_불일치로_로그인시_401() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"%s\",\"password\":\"wrong-password\"}".formatted(adminEmail)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 존재하지_않는_계정으로_로그인시_401() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"unknown@douid.kr\",\"password\":\"password\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @WithMockUser(roles = "USER")
     void ADMIN_권한_없이_보호된_API_접근시_403() throws Exception {
         mockMvc.perform(get("/api/admin/categories"))
