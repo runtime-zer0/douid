@@ -25,6 +25,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
 import kr.douid.brand.auth.application.AuthenticationService;
+import kr.douid.brand.client.application.ClientAuthenticationService;
+import kr.douid.brand.shared.security.ClientCredentialFilter;
 import kr.douid.brand.shared.security.CustomAccessDeniedHandler;
 import kr.douid.brand.shared.security.CustomAuthenticationEntryPoint;
 import kr.douid.brand.shared.security.CustomLoginAuthenticationFilter;
@@ -36,11 +38,11 @@ import kr.douid.brand.shared.security.CustomLogoutSuccessHandler;
  * Spring Security 필터 체인 설정
  *
  * Session 기반 인증 정책 사용
- * public/admin 경로 분리, 미인증 401·인가 실패 403 JSON 응답 처리
+ * public/admin/client 경로 분리, 미인증 401·인가 실패 403 JSON 응답 처리
  */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(CorsProperties.class)
+@EnableConfigurationProperties({CorsProperties.class, ClientCookieProperties.class})
 public class SecurityConfig {
 
     private final ObjectMapper objectMapper;
@@ -99,6 +101,7 @@ public class SecurityConfig {
      * @param authenticationManager    로그인 필터가 위임할 인증 관리자
      * @param securityContextRepository 로그인 성공 시 인증 정보를 저장할 저장소
      * @param authenticationService    로그인 성공 시 관리자 정보를 조회할 서비스
+     * @param clientAuthenticationService client_token 검증에 사용할 서비스
      * @return 구성된 {@link SecurityFilterChain}
      * @throws Exception 필터 체인 구성 실패 시
      */
@@ -107,7 +110,8 @@ public class SecurityConfig {
             HttpSecurity http,
             AuthenticationManager authenticationManager,
             SecurityContextRepository securityContextRepository,
-            AuthenticationService authenticationService) throws Exception {
+            AuthenticationService authenticationService,
+            ClientAuthenticationService clientAuthenticationService) throws Exception {
         CustomLoginAuthenticationFilter loginFilter = new CustomLoginAuthenticationFilter(
                 authenticationManager,
                 objectMapper,
@@ -123,6 +127,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/media/**").permitAll()
+                        .requestMatchers("/api/client/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/csrf-token").permitAll()
                         .requestMatchers("/api/auth/**").authenticated()
@@ -134,7 +139,9 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler(new CustomLogoutSuccessHandler(objectMapper)))
-                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new ClientCredentialFilter(clientAuthenticationService),
+                        CustomLoginAuthenticationFilter.class);
 
         return http.build();
     }

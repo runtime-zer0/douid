@@ -18,3 +18,5 @@ media:
 app:
   security:
     allowed-origins: http://localhost:3000
+  client:
+    token-expiration-days: 180
