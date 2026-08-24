@@ -11,13 +11,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import kr.douid.brand.shared.config.JpaConfig;
+import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 import kr.douid.brand.work.domain.Work;
 import kr.douid.brand.work.domain.WorkMediaItem;
 import kr.douid.brand.work.domain.WorkMediaRole;
@@ -25,21 +21,9 @@ import kr.douid.brand.work.domain.WorkVisibility;
 import kr.douid.brand.work.infrastructure.persistence.WorkJpaRepository;
 
 @DataJpaTest
-@Testcontainers
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(JpaConfig.class)
-class JpaWorkRepositoryTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
+class JpaWorkRepositoryTest extends PostgresIntegrationTest {
 
     @Autowired
     private WorkJpaRepository repository;

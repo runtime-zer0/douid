@@ -14,17 +14,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import kr.douid.brand.category.domain.Category;
 import kr.douid.brand.category.infrastructure.persistence.CategoryJpaRepository;
 import kr.douid.brand.media.domain.Media;
 import kr.douid.brand.media.infrastructure.persistence.MediaJpaRepository;
 import kr.douid.brand.shared.config.JpaConfig;
+import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 import kr.douid.brand.work.application.query.AdminWorkDetail;
 import kr.douid.brand.work.application.query.AdminWorkListItem;
 import kr.douid.brand.work.application.query.PublicWorkDetail;
@@ -37,21 +33,9 @@ import kr.douid.brand.work.infrastructure.persistence.WorkJpaRepository;
 import kr.douid.brand.work.infrastructure.query.QuerydslWorkQueryRepositoryAdapter;
 
 @DataJpaTest
-@Testcontainers
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({JpaConfig.class, QuerydslWorkQueryRepositoryAdapter.class})
-class QuerydslWorkQueryRepositoryAdapterTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
+class QuerydslWorkQueryRepositoryAdapterTest extends PostgresIntegrationTest {
 
     @Autowired
     private WorkJpaRepository workJpaRepository;
