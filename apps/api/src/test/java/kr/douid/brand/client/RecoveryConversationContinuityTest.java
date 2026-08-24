@@ -9,11 +9,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import kr.douid.brand.chat.application.ConversationStartService;
 import kr.douid.brand.chat.application.command.StartConversationResult;
@@ -25,6 +20,7 @@ import kr.douid.brand.client.application.ClientIdentityProvisioningService;
 import kr.douid.brand.client.application.ClientIdentityProvisioningService.ProvisionedClient;
 import kr.douid.brand.client.domain.ClientCredential;
 import kr.douid.brand.client.domain.ClientCredentialRepository;
+import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 
 /**
  * Recovery로 발급된 새 client_token이 Phase 07의 {@link ConversationStartService}를 그대로 타면서
@@ -35,21 +31,7 @@ import kr.douid.brand.client.domain.ClientCredentialRepository;
  * 만족하는지 확인하는 통합 검증이다.
  */
 @SpringBootTest
-@Testcontainers
-class RecoveryConversationContinuityTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
-        registry.add("spring.sql.init.mode", () -> "never");
-    }
+class RecoveryConversationContinuityTest extends PostgresIntegrationTest {
 
     @Autowired
     private ClientIdentityProvisioningService clientIdentityProvisioningService;

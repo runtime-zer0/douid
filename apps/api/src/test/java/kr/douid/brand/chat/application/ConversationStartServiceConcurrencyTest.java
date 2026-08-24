@@ -15,34 +15,16 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import kr.douid.brand.client.application.ClientIdentityProvisioningService;
+import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 
 /**
  * 동일 상담 주체에서 거의 동시에 여러 상담 시작 요청이 발생해도 활성 Conversation이 하나만
  * 존재하는지 검증(FR-026, research.md #7 비관적 락 검증)
  */
 @SpringBootTest
-@Testcontainers
-class ConversationStartServiceConcurrencyTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
-        registry.add("spring.sql.init.mode", () -> "never");
-    }
+class ConversationStartServiceConcurrencyTest extends PostgresIntegrationTest {
 
     @Autowired
     private ConversationStartService conversationStartService;

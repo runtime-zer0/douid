@@ -14,18 +14,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.servlet.http.Cookie;
 import kr.douid.brand.auth.domain.Admin;
 import kr.douid.brand.auth.domain.AdminRepository;
 import kr.douid.brand.auth.domain.AdminRole;
+import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 
 /**
  * 실제 XSRF-TOKEN 쿠키를 발급받아 상태 변경 요청에 사용하는 흐름을 검증
@@ -38,21 +34,7 @@ import kr.douid.brand.auth.domain.AdminRole;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Testcontainers
-class CsrfCookieFlowTest {
-
-    @Container
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17-alpine");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.datasource.driver-class-name", postgres::getDriverClassName);
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
-        registry.add("spring.sql.init.mode", () -> "never");
-    }
+class CsrfCookieFlowTest extends PostgresIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
