@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
 
+import kr.douid.brand.client.domain.ClientIdentity;
 import kr.douid.brand.client.domain.EmailVerificationChallenge;
 import kr.douid.brand.shared.config.JpaConfig;
 import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
@@ -23,15 +25,27 @@ class JpaEmailVerificationChallengeRepositoryAdapterTest extends PostgresIntegra
     @Autowired
     private JpaEmailVerificationChallengeRepositoryAdapter adapter;
 
+    @Autowired
+    private ClientIdentityJpaRepository clientIdentityJpaRepository;
+
+    private Long clientIdentityId;
+    private Long otherClientIdentityId;
+
+    @BeforeEach
+    void setUp() {
+        clientIdentityId = clientIdentityJpaRepository.save(ClientIdentity.create()).getId();
+        otherClientIdentityId = clientIdentityJpaRepository.save(ClientIdentity.create()).getId();
+    }
+
     @Test
     void findLatestByClientIdentityIdAndNormalizedEmail_가장최근챌린지를_반환한다() {
-        adapter.save(EmailVerificationChallenge.issue(1L, "user@example.com", "old-hash",
+        adapter.save(EmailVerificationChallenge.issue(clientIdentityId, "user@example.com", "old-hash",
                 LocalDateTime.now().plusMinutes(5)));
-        EmailVerificationChallenge latest = adapter.save(EmailVerificationChallenge.issue(1L, "user@example.com",
-                "new-hash", LocalDateTime.now().plusMinutes(5)));
+        EmailVerificationChallenge latest = adapter.save(EmailVerificationChallenge.issue(clientIdentityId,
+                "user@example.com", "new-hash", LocalDateTime.now().plusMinutes(5)));
 
         Optional<EmailVerificationChallenge> found =
-                adapter.findLatestByClientIdentityIdAndNormalizedEmail(1L, "user@example.com");
+                adapter.findLatestByClientIdentityIdAndNormalizedEmail(clientIdentityId, "user@example.com");
 
         assertThat(found).isPresent();
         assertThat(found.get().getId()).isEqualTo(latest.getId());
@@ -39,11 +53,11 @@ class JpaEmailVerificationChallengeRepositoryAdapterTest extends PostgresIntegra
 
     @Test
     void findLatestByClientIdentityIdAndNormalizedEmail_다른상담주체는_조회되지않는다() {
-        adapter.save(EmailVerificationChallenge.issue(1L, "user@example.com", "hash",
+        adapter.save(EmailVerificationChallenge.issue(clientIdentityId, "user@example.com", "hash",
                 LocalDateTime.now().plusMinutes(5)));
 
         Optional<EmailVerificationChallenge> found =
-                adapter.findLatestByClientIdentityIdAndNormalizedEmail(2L, "user@example.com");
+                adapter.findLatestByClientIdentityIdAndNormalizedEmail(otherClientIdentityId, "user@example.com");
 
         assertThat(found).isEmpty();
     }

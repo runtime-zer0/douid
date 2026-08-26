@@ -53,9 +53,9 @@ dependencies {
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-	testImplementation 'org.testcontainers:junit-jupiter:1.21.2'
-	testImplementation 'org.testcontainers:postgresql:1.21.2'
-	testImplementation 'org.testcontainers:testcontainers:1.21.2'
+	testImplementation 'org.testcontainers:junit-jupiter:1.21.4'
+	testImplementation 'org.testcontainers:postgresql:1.21.4'
+	testImplementation 'org.testcontainers:testcontainers:1.21.4'
 	testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-batch-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
@@ -71,4 +71,16 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// testcontainers 1.21.4가 자체 pom에서 docker-java 3.4.2를 명시 고정하는데,
+// 이 버전이 최신 Docker Desktop 소켓 프로토콜과 호환되지 않는다.
+// testcontainers가 docker-java 3.7.x를 공식 채택한 버전을 릴리스하면 이 force 블록을 제거하고
+// testImplementation의 testcontainers 버전만 올리면 된다.
+configurations.testRuntimeClasspath {
+	resolutionStrategy {
+		force 'com.github.docker-java:docker-java-api:3.7.1'
+		force 'com.github.docker-java:docker-java-transport:3.7.1'
+		force 'com.github.docker-java:docker-java-transport-zerodep:3.7.1'
+	}
 }

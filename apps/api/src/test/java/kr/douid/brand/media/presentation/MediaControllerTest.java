@@ -31,6 +31,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import kr.douid.brand.auth.application.AuthenticationService;
+import kr.douid.brand.client.application.ClientAuthenticationService;
 import kr.douid.brand.media.application.command.MediaCommandService;
 import kr.douid.brand.media.application.command.MediaResult;
 import kr.douid.brand.media.application.query.MediaFileResult;
@@ -52,6 +53,9 @@ class MediaControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
+
+    @MockitoBean
+    private ClientAuthenticationService clientAuthenticationService;
 
     @MockitoBean
     private MediaCommandService mediaCommandService;

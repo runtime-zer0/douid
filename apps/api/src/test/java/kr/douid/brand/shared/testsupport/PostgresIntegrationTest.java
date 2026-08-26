@@ -27,5 +27,9 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.sql.init.mode", () -> "never");
+        registry.add("spring.mail.host", () -> "localhost");
+        registry.add("spring.mail.port", () -> "1025");
+        registry.add("spring.mail.properties.mail.smtp.auth", () -> "false");
+        registry.add("spring.mail.properties.mail.smtp.starttls.enable", () -> "false");
     }
 }
