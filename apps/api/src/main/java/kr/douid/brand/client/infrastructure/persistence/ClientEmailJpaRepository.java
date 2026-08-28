@@ -3,8 +3,6 @@ package kr.douid.brand.client.infrastructure.persistence;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import kr.douid.brand.client.domain.ClientEmail;
 
@@ -29,15 +27,4 @@ public interface ClientEmailJpaRepository extends JpaRepository<ClientEmail, Lon
      * @return 검증 완료된 이메일 (없으면 empty)
      */
     Optional<ClientEmail> findByClientIdentityIdAndNormalizedEmail(Long clientIdentityId, String normalizedEmail);
-
-    /**
-     * normalized email 문자열을 키로 하는 PostgreSQL 트랜잭션 범위 advisory lock을 획득
-     *
-     * row 존재 여부와 무관하게 동일 문자열에 대한 동시 트랜잭션을 직렬화하며, 트랜잭션 종료 시
-     * 자동 해제된다.
-     *
-     * @param normalizedEmail 락 키로 사용할 정규화 이메일
-     */
-    @Query(value = "select pg_advisory_xact_lock(hashtext(:normalizedEmail))", nativeQuery = true)
-    void lockByNormalizedEmail(@Param("normalizedEmail") String normalizedEmail);
 }
