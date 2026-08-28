@@ -37,16 +37,4 @@ public interface ClientEmailRepository {
      */
     Optional<ClientEmail> findVerifiedByClientIdentityIdAndNormalizedEmail(Long clientIdentityId,
             String normalizedEmail);
-
-    /**
-     * 동일 normalized email에 대한 검증 완료 요청을 직렬화하는 트랜잭션 범위 락
-     *
-     * {@code client_email}은 최초 검증 완료 시점 전까지 해당 normalized email의 row가 존재하지
-     * 않아 row 단위 비관적 락을 걸 수 없다. 두 상담 주체가 동일 이메일을 거의 동시에 검증 완료
-     * 시도할 때 재조회만으로는 막을 수 없는 경쟁 조건을 막기 위해 이 메서드로 트랜잭션을 직렬화한
-     * 뒤 재조회한다(FR-011, research.md #10).
-     *
-     * @param normalizedEmail 락을 걸 정규화 이메일
-     */
-    void lockByNormalizedEmail(String normalizedEmail);
 }

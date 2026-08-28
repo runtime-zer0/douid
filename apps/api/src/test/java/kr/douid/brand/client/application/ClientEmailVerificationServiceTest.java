@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import kr.douid.brand.client.domain.ClientEmail;
 import kr.douid.brand.client.domain.ClientEmailRepository;
@@ -81,7 +83,7 @@ class ClientEmailVerificationServiceTest {
     }
 
     @Test
-    void verify_경쟁조건으로_이미다른상담주체가검증완료_EmailAlreadyOwnedException() {
+    void verify_사전조회에서_이미다른상담주체가검증완료_EmailAlreadyOwnedException() {
         String rawCode = "123456";
         EmailVerificationChallenge challenge = EmailVerificationChallenge.issue(1L, "user@example.com",
                 codeIssuer.hash(rawCode), LocalDateTime.now().plusMinutes(5));
@@ -90,6 +92,21 @@ class ClientEmailVerificationServiceTest {
         ClientEmail ownedByOther =
                 ClientEmail.verify(2L, "user@example.com", "user@example.com", LocalDateTime.now());
         given(clientEmailRepository.findByNormalizedEmail("user@example.com")).willReturn(Optional.of(ownedByOther));
+
+        assertThatThrownBy(() -> service.verify(1L, "user@example.com", rawCode))
+                .isInstanceOf(EmailAlreadyOwnedException.class);
+    }
+
+    @Test
+    void verify_저장시점경쟁조건으로_unique제약위반_EmailAlreadyOwnedException() {
+        String rawCode = "123456";
+        EmailVerificationChallenge challenge = EmailVerificationChallenge.issue(1L, "user@example.com",
+                codeIssuer.hash(rawCode), LocalDateTime.now().plusMinutes(5));
+        given(emailVerificationChallengeRepository.findLatestByClientIdentityIdAndNormalizedEmail(1L,
+                "user@example.com")).willReturn(Optional.of(challenge));
+        given(clientEmailRepository.findByNormalizedEmail("user@example.com")).willReturn(Optional.empty());
+        willThrow(new DataIntegrityViolationException("unique constraint violation"))
+                .given(clientEmailRepository).save(any(ClientEmail.class));
 
         assertThatThrownBy(() -> service.verify(1L, "user@example.com", rawCode))
                 .isInstanceOf(EmailAlreadyOwnedException.class);

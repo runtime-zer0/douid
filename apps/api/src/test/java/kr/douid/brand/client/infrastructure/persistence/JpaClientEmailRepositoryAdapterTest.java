@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
@@ -60,7 +61,7 @@ class JpaClientEmailRepositoryAdapterTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void lockByNormalizedEmail_두상담주체가동시에검증완료를시도해도_하나만성공한다() throws InterruptedException {
+    void save_두상담주체가동시에같은이메일을검증완료해도_partialUniqueIndex로_하나만성공한다() throws InterruptedException {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         String normalizedEmail = "race@example.com";
@@ -71,15 +72,15 @@ class JpaClientEmailRepositoryAdapterTest extends PostgresIntegrationTest {
         List<? extends Future<?>> futures = List.of(clientIdentityId, otherClientIdentityId).stream()
                 .map(clientIdentityId -> executor.submit(() -> {
                     bothStarted.countDown();
-                    transactionTemplate.executeWithoutResult(status -> {
-                        adapter.lockByNormalizedEmail(normalizedEmail);
-                        Optional<ClientEmail> alreadyOwned = adapter.findByNormalizedEmail(normalizedEmail);
-                        if (alreadyOwned.isEmpty()) {
+                    try {
+                        transactionTemplate.executeWithoutResult(status -> {
                             adapter.save(ClientEmail.verify(clientIdentityId, "race@example.com", normalizedEmail,
                                     LocalDateTime.now()));
                             successCount.incrementAndGet();
-                        }
-                    });
+                        });
+                    } catch (DataIntegrityViolationException e) {
+                        // partial unique index 위반: 동시 검증 완료 중 하나는 반드시 이 경로로 실패해야 한다
+                    }
                 }))
                 .toList();
 
@@ -100,9 +101,10 @@ class JpaClientEmailRepositoryAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void save_저장한이메일을_normalizedEmail로_조회할수있다() {
-        adapter.save(ClientEmail.verify(clientIdentityId, "User@Example.com", "user@example.com", LocalDateTime.now()));
+        adapter.save(ClientEmail.verify(clientIdentityId, "Saved@Example.com", "saved@example.com",
+                LocalDateTime.now()));
 
-        Optional<ClientEmail> found = adapter.findByNormalizedEmail("user@example.com");
+        Optional<ClientEmail> found = adapter.findByNormalizedEmail("saved@example.com");
 
         assertThat(found).isPresent();
         assertThat(found.get().getClientIdentityId()).isEqualTo(clientIdentityId);
@@ -117,12 +119,13 @@ class JpaClientEmailRepositoryAdapterTest extends PostgresIntegrationTest {
 
     @Test
     void findVerifiedByClientIdentityIdAndNormalizedEmail_본인소유만_조회된다() {
-        adapter.save(ClientEmail.verify(clientIdentityId, "user@example.com", "user@example.com", LocalDateTime.now()));
+        adapter.save(ClientEmail.verify(clientIdentityId, "owned@example.com", "owned@example.com",
+                LocalDateTime.now()));
 
         Optional<ClientEmail> ownedByOther =
-                adapter.findVerifiedByClientIdentityIdAndNormalizedEmail(otherClientIdentityId, "user@example.com");
+                adapter.findVerifiedByClientIdentityIdAndNormalizedEmail(otherClientIdentityId, "owned@example.com");
         Optional<ClientEmail> ownedBySelf =
-                adapter.findVerifiedByClientIdentityIdAndNormalizedEmail(clientIdentityId, "user@example.com");
+                adapter.findVerifiedByClientIdentityIdAndNormalizedEmail(clientIdentityId, "owned@example.com");
 
         assertThat(ownedByOther).isEmpty();
         assertThat(ownedBySelf).isPresent();

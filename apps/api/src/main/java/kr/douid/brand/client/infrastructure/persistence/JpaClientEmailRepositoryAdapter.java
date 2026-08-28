@@ -34,9 +34,4 @@ public class JpaClientEmailRepositoryAdapter implements ClientEmailRepository {
             String normalizedEmail) {
         return clientEmailJpaRepository.findByClientIdentityIdAndNormalizedEmail(clientIdentityId, normalizedEmail);
     }
-
-    @Override
-    public void lockByNormalizedEmail(String normalizedEmail) {
-        clientEmailJpaRepository.lockByNormalizedEmail(normalizedEmail);
-    }
 }
