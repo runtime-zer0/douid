@@ -24,10 +24,6 @@ public interface ConversationJpaRepository extends JpaRepository<Conversation, L
     /**
      * 상담 주체와 상태로 상담을 조회
      *
-     * 동시 요청 직렬화는 아직 존재하지 않는 이 행이 아니라
-     * {@link kr.douid.brand.client.infrastructure.persistence.ClientIdentityJpaRepository#findByIdForUpdate}의
-     * 상담 주체 행 락으로 처리한다.
-     *
      * @param clientIdentityId 상담 주체 ID
      * @param status            조회할 상태
      * @return 상담 (없으면 empty)
