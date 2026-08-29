@@ -21,7 +21,7 @@ import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 
 /**
  * 동일 상담 주체에서 거의 동시에 여러 상담 시작 요청이 발생해도 활성 Conversation이 하나만
- * 존재하는지 검증(FR-026, research.md #7 비관적 락 검증)
+ * 존재하는지 검증(FR-026) — partial unique index 위반 시 재조회 흐름이 정상 동작하는지 확인한다.
  */
 @SpringBootTest
 class ConversationStartServiceConcurrencyTest extends PostgresIntegrationTest {

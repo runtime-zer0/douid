@@ -40,15 +40,4 @@ public class JpaClientIdentityRepositoryAdapter implements ClientIdentityReposit
     public Optional<ClientIdentity> findById(Long id) {
         return clientIdentityJpaRepository.findById(id);
     }
-
-    /**
-     * ID로 상담 주체를 비관적 락으로 조회
-     *
-     * @param id 상담 주체 ID
-     * @return 상담 주체 (없으면 empty)
-     */
-    @Override
-    public Optional<ClientIdentity> findByIdForUpdate(Long id) {
-        return clientIdentityJpaRepository.findByIdForUpdate(id);
-    }
 }
