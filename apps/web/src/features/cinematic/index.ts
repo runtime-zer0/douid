@@ -1,1 +1,1 @@
-export { CinematicStage } from "./components/CinematicStage";
+export { CinematicScroll } from "./components/CinematicScroll";

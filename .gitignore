@@ -36,3 +36,5 @@ gradle-app.setting
 
 # Context Engineering
 **/CLAUDE.md
+# Local cinematic media (symlink to approved web_output_v3)
+apps/web/public/media/

@@ -1,0 +1,73 @@
+{
+  "status": "WEB_MEDIA_VERIFIED_TIMESTAMPS_NO_BROWSER_SEEK_QA",
+  "groups": [
+    {
+      "id": "G1",
+      "filename": "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4",
+      "master_start_frame": 0,
+      "master_end_frame_exclusive": 450,
+      "frame_count": 450,
+      "sha256": "74e5bcaccb2d24b3ed12a620eca2ee4f6e37fc6de07cf74fb48b964ac8ba94f8",
+      "duration_seconds": 15.0,
+      "first_pts": 0,
+      "last_pts": 229888,
+      "time_base": "1/15360",
+      "start_scroll_progress": 0.0,
+      "end_scroll_progress": 0.139273944678,
+      "scroll_window_includes_transition_from_previous_group": false
+    },
+    {
+      "id": "G2",
+      "filename": "4k/DOUID_G2_4K_30FPS_WEB_H264.mp4",
+      "master_start_frame": 450,
+      "master_end_frame_exclusive": 1470,
+      "frame_count": 1020,
+      "sha256": "f0721dfabd89bc3a965934c77c5080fb5a9d1d6aadfd596c462876616d10404b",
+      "duration_seconds": 34.0,
+      "first_pts": 0,
+      "last_pts": 521728,
+      "time_base": "1/15360",
+      "start_scroll_progress": 0.139587020816,
+      "end_scroll_progress": 0.469224411779,
+      "scroll_window_includes_transition_from_previous_group": true
+    },
+    {
+      "id": "G3",
+      "filename": "4k/DOUID_G3_4K_30FPS_WEB_H264.mp4",
+      "master_start_frame": 1470,
+      "master_end_frame_exclusive": 2410,
+      "frame_count": 940,
+      "sha256": "7164ad1c92ca5dc17bd950e8503f1d2ff31214f9ac5cc44071a6e5b61e249ee3",
+      "duration_seconds": 31.333333333333332,
+      "first_pts": 0,
+      "last_pts": 480768,
+      "time_base": "1/15360",
+      "start_scroll_progress": 0.469542942527,
+      "end_scroll_progress": 0.777515835621,
+      "scroll_window_includes_transition_from_previous_group": true
+    },
+    {
+      "id": "G4",
+      "filename": "4k/DOUID_G4_4K_30FPS_WEB_H264.mp4",
+      "master_start_frame": 2410,
+      "master_end_frame_exclusive": 3089,
+      "frame_count": 679,
+      "sha256": "e995ac86d84d4b9bff45b96890c2a7a5c39ed2246bca9627d72df9c0ed71a4bc",
+      "duration_seconds": 22.633333333333333,
+      "first_pts": 0,
+      "last_pts": 347136,
+      "time_base": "1/15360",
+      "start_scroll_progress": 0.777827795128,
+      "end_scroll_progress": 1.0,
+      "scroll_window_includes_transition_from_previous_group": true
+    }
+  ],
+  "L01": {
+    "id": "L01",
+    "frames": 230,
+    "fps": "30/1",
+    "status": "EXCLUDED_FROM_SCROLL_NORMALIZATION",
+    "asset_sha256": "6f22f1a8297ec951306734ed766fd6caa2bd376b3dc608a1d9c15acb3a298c31"
+  },
+  "r2_base_url": "NOT_CONFIGURED"
+}
