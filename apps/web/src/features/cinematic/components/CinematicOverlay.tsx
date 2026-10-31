@@ -22,7 +22,7 @@ export function CinematicOverlay({ state, onRetry }: CinematicOverlayProps) {
           <div className="flex gap-3">
             <Button onClick={onRetry}>다시 시도</Button>
             <Button asChild variant="outline" className="text-foreground">
-              <a href="#after-cinematic">시네마틱 건너뛰기</a>
+              <a href="#site-footer">시네마틱 건너뛰기</a>
             </Button>
           </div>
         </div>

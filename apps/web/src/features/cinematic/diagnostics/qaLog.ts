@@ -1,3 +1,4 @@
+import type { EndingPhase } from "../core/endingTimeline";
 import type { GroupId } from "../core/types";
 
 export type QaEvent =
@@ -16,7 +17,10 @@ export type QaEvent =
   | { t: number; type: "superseded"; requestId: number; group: GroupId }
   | { t: number; type: "visible_group"; from: GroupId | null; to: GroupId }
   | { t: number; type: "waiting" | "stalled" | "error"; group: GroupId; detail?: string }
-  | { t: number; type: "lifecycle"; detail: "hidden" | "visible" | "pageshow" | "focus" | "raf_stalled" | "scroll_restored" };
+  | { t: number; type: "lifecycle"; detail: "hidden" | "visible" | "pageshow" | "focus" | "raf_stalled" | "scroll_restored" }
+  | { t: number; type: "ending"; phase: EndingPhase; e: number }
+  | { t: number; type: "loop"; detail: "presented" | "error" | "stalled" | "waiting" | "buffered" | "fallback" }
+  | { t: number; type: "loop"; detail: "wrap"; droppedFrames: number | null; totalFrames: number | null };
 
 export type QaEventInput = QaEvent extends infer E ? (E extends QaEvent ? Omit<E, "t"> : never) : never;
 
