@@ -7,6 +7,7 @@ export class FakeVideo extends EventTarget {
   error: { code: number } | null = null;
   preload = "metadata";
   src = "";
+  duration = Number.NaN;
   seeks: number[] = [];
   load = vi.fn(() => {
     this.readyState = 0;
@@ -14,6 +15,8 @@ export class FakeVideo extends EventTarget {
   removeAttribute = vi.fn((name: string) => {
     if (name === "src") this.src = "";
   });
+  play = vi.fn(() => Promise.resolve());
+  pause = vi.fn();
   cancelVideoFrameCallback = vi.fn((handle: number) => {
     this.frameCallbacks.delete(handle);
   });

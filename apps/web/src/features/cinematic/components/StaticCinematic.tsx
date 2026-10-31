@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import type { CinematicTable } from "../core/types";
 import { createGroupSeeker, type GroupSeeker, isPresented, type SeekerStatus } from "../playback/groupSeeker";
@@ -8,8 +8,8 @@ import { cn } from "@/shared/lib/utils";
 
 import { CinematicOverlay } from "./CinematicOverlay";
 
-/** 움직임 감소·coarse pointer용 정적 화면, 마지막 승인 프레임을 정지 상태로 표시 */
-export function StaticCinematic({ table }: { table: CinematicTable }) {
+/** 움직임 감소·coarse pointer용 정적 화면, 마지막 승인 프레임 위에 엔딩 로고를 바로 표시, L01·커튼 없음 */
+export function StaticCinematic({ table, endingMark }: { table: CinematicTable; endingMark: ReactNode }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const seekerRef = useRef<GroupSeeker | null>(null);
   const [status, setStatus] = useState<SeekerStatus>("idle");
@@ -27,7 +27,7 @@ export function StaticCinematic({ table }: { table: CinematicTable }) {
   }, [table]);
 
   return (
-    <div className="relative h-svh overflow-hidden bg-black">
+    <div className="sticky top-0 h-svh overflow-hidden bg-black">
       <video
         ref={videoRef}
         muted
@@ -38,6 +38,9 @@ export function StaticCinematic({ table }: { table: CinematicTable }) {
         tabIndex={-1}
         className={cn("absolute inset-0 size-full object-cover", !isPresented(status) && "invisible")}
       />
+      <div aria-hidden="true" data-testid="ending-mark" className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        {endingMark}
+      </div>
       <CinematicOverlay
         state={status === "error" ? "error" : isPresented(status) ? "hidden" : "loading"}
         onRetry={() => seekerRef.current?.retry()}
