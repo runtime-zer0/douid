@@ -92,9 +92,61 @@ describe("loopPlayer 받기", () => {
     player.enter();
 
     await source.fail();
-    expect(log).toHaveBeenCalledWith({ type: "loop", detail: "fallback" });
+    expect(log).toHaveBeenCalledWith({ type: "loop", detail: "fallback", reason: "network", status: null });
     expect(video.src).toBe(SRC);
     expect(video.play).toHaveBeenCalledTimes(1);
+  });
+
+  it("받기 시작은 preload를 여러 번 불러도 한 번만 기록", () => {
+    const { player, log } = setup();
+    player.preload();
+    player.preload();
+
+    expect(log.mock.calls.filter(([event]) => event.detail === "preload_start")).toHaveLength(1);
+  });
+
+  it("엔딩 진입으로 시작된 받기도 시작을 기록", () => {
+    const { player, log } = setup();
+    player.enter();
+
+    expect(log).toHaveBeenCalledWith({ type: "loop", detail: "preload_start" });
+  });
+
+  describe("기본 받기 실패 사유", () => {
+    function setupWithFetch(fetchImpl: () => Promise<Response>) {
+      vi.stubGlobal("fetch", vi.fn(fetchImpl));
+      const createObjectUrl = vi.spyOn(URL, "createObjectURL");
+      const video = new FakeVideo();
+      const log = vi.fn();
+      const player = createLoopPlayer(video.asVideo(), SRC, { onVisibleChange: () => {}, log });
+      return { video, player, log, createObjectUrl };
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("HTTP 오류 응답이면 상태 코드와 함께 http로 기록하고 원본 주소로 재생", async () => {
+      const { video, player, log, createObjectUrl } = setupWithFetch(() =>
+        Promise.resolve(new Response(null, { status: 404 })),
+      );
+      player.preload();
+
+      await vi.waitFor(() =>
+        expect(log).toHaveBeenCalledWith({ type: "loop", detail: "fallback", reason: "http", status: 404 }),
+      );
+      expect(createObjectUrl).not.toHaveBeenCalled();
+      expect(video.src).toBe(SRC);
+    });
+
+    it("요청 자체가 실패하면 network로 기록", async () => {
+      const { player, log } = setupWithFetch(() => Promise.reject(new TypeError("Failed to fetch")));
+      player.preload();
+
+      await vi.waitFor(() =>
+        expect(log).toHaveBeenCalledWith({ type: "loop", detail: "fallback", reason: "network", status: null }),
+      );
+    });
   });
 
   it("받는 도중 정리되면 요청을 중단하고 늦게 도착한 사본은 해제", async () => {

@@ -2,7 +2,7 @@
 
 import { type ReactNode, type RefObject, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { LOOP_FRAME_SECONDS, LOOP_RESTART_SECONDS, resolveLoopSrc } from "../config/media";
+import { LOOP_FRAME_SECONDS, LOOP_RESTART_SECONDS, resolveLoopPreloadProgress, resolveLoopSrc } from "../config/media";
 import { type EndingPhase, resolveEndingState } from "../core/endingTimeline";
 import { computeProgress } from "../core/scrollProgress";
 import { resolveFrame } from "../core/resolveFrame";
@@ -24,7 +24,6 @@ const RAF_STALE_MS = 250;
 // 메인 구간은 PHASE 01 스크롤 거리 그대로 두고 S43·S50 엔딩 구간만 뒤에 덧붙임 (research R5), 섹션 높이 클래스와 함께 수정
 const MAIN_VH = 1500;
 const ENDING_VH = 400;
-const LOOP_PRELOAD_PROGRESS = 0.95;
 
 function subscribeMode(onChange: () => void) {
   const query = window.matchMedia(STATIC_MODE_QUERY);
@@ -138,6 +137,7 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       frameSeconds: LOOP_FRAME_SECONDS,
     });
     let loopPreloaded = false;
+    const preloadAt = resolveLoopPreloadProgress(window.location.search, debug);
     let endingPhase: EndingPhase | null = null;
 
     // 로고 투명도·커튼 위치는 rAF마다 DOM 직접 갱신, L01 제어와 진단 기록은 phase가 바뀔 때만
@@ -201,8 +201,10 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
         sectionHeight: rect.height - mainHeight + viewportHeight,
         viewportHeight,
       });
-      if (progress > LOOP_PRELOAD_PROGRESS && !loopPreloaded) {
+      if (progress > preloadAt && !loopPreloaded) {
         loopPreloaded = true;
+        // 넘는 순간 기록해야 로그 앞부분이 잘려도 적용된 시작점이 남음
+        qaLog.push({ type: "loop", detail: "preload_threshold", value: preloadAt, progress });
         loop.preload();
       }
       if (endingProgress !== null) applyEnding(endingProgress);
