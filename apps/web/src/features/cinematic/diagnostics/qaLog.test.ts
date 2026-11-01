@@ -7,14 +7,14 @@ afterEach(() => {
 });
 
 describe("createQaLog", () => {
-  it("2,000건을 넘으면 오래된 이벤트부터 버림", () => {
+  it("20,000건을 넘으면 오래된 이벤트부터 버림", () => {
     const log = createQaLog(true);
-    for (let i = 0; i < 2005; i++) log.push({ type: "superseded", requestId: i, group: "G1" });
+    for (let i = 0; i < 20005; i++) log.push({ type: "superseded", requestId: i, group: "G1" });
 
     const events = JSON.parse(log.export()) as QaEvent[];
-    expect(events).toHaveLength(2000);
+    expect(events).toHaveLength(20000);
     expect(events[0]).toMatchObject({ requestId: 5 });
-    expect(events.at(-1)).toMatchObject({ requestId: 2004 });
+    expect(events.at(-1)).toMatchObject({ requestId: 20004 });
   });
 
   it("export는 시각이 붙은 JSON 배열 문자열이고 전역 객체로도 접근 가능", () => {

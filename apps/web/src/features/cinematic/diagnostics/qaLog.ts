@@ -19,7 +19,9 @@ export type QaEvent =
   | { t: number; type: "waiting" | "stalled" | "error"; group: GroupId; detail?: string }
   | { t: number; type: "lifecycle"; detail: "hidden" | "visible" | "pageshow" | "focus" | "raf_stalled" | "scroll_restored" }
   | { t: number; type: "ending"; phase: EndingPhase; e: number }
-  | { t: number; type: "loop"; detail: "presented" | "error" | "stalled" | "waiting" | "buffered" | "fallback" }
+  | { t: number; type: "loop"; detail: "presented" | "error" | "stalled" | "waiting" | "buffered" | "preload_start" }
+  | { t: number; type: "loop"; detail: "preload_threshold"; value: number; progress: number }
+  | { t: number; type: "loop"; detail: "fallback"; reason: "http" | "network"; status: number | null }
   | { t: number; type: "loop"; detail: "wrap"; droppedFrames: number | null; totalFrames: number | null };
 
 export type QaEventInput = QaEvent extends infer E ? (E extends QaEvent ? Omit<E, "t"> : never) : never;
@@ -38,7 +40,8 @@ declare global {
   }
 }
 
-const CAPACITY = 2000;
+// 처음부터 엔딩까지 한 번 스크롤하면 2000건을 넘어 앞부분 G1~G3 기록이 잘림 (PHASE 03 contracts/loop-diagnostics.md)
+const CAPACITY = 20000;
 const NOOP_LOG: QaLog = { push: () => {}, export: () => "[]", dispose: () => {} };
 
 /** 진단 이벤트 링버퍼 생성, 활성 시에만 window.__DOUID_CINEMATIC_QA__ 노출 */

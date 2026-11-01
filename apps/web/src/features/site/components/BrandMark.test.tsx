@@ -29,7 +29,7 @@ describe("BrandMark", () => {
 
     const logo = screen.getByRole("img", { name: "DOUID" });
     expect(logo).toHaveClass("w-64", "h-auto");
-    expect(logo).toHaveAttribute("width", "4809");
-    expect(logo).toHaveAttribute("height", "2304");
+    expect(logo).toHaveAttribute("width", "1716");
+    expect(logo).toHaveAttribute("height", "475");
   });
 });

@@ -26,10 +26,17 @@ type LoopPlayerOptions = {
   frameSeconds?: number;
 };
 
+/** 응답은 받았지만 성공 상태가 아님, fallback 사유를 네트워크·CORS 실패와 구분하기 위함 */
+class LoopFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`L01 fetch failed: ${status}`);
+  }
+}
+
 /** L01 전체를 받아 Blob URL 생성 */
 async function loadAsObjectUrl(src: string, signal: AbortSignal): Promise<string> {
   const response = await fetch(src, { signal });
-  if (!response.ok) throw new Error(`L01 fetch failed: ${response.status}`);
+  if (!response.ok) throw new LoopFetchError(response.status);
   return URL.createObjectURL(await response.blob());
 }
 
@@ -116,6 +123,7 @@ export function createLoopPlayer(
   const preload = () => {
     if (loading || disposed) return;
     loading = true;
+    log?.({ type: "loop", detail: "preload_start" });
     loadSource(src, loadAbort.signal).then(
       (url) => {
         if (disposed) {
@@ -125,9 +133,14 @@ export function createLoopPlayer(
         log?.({ type: "loop", detail: "buffered" });
         useSource(url);
       },
-      () => {
+      (error: unknown) => {
         if (disposed) return;
-        log?.({ type: "loop", detail: "fallback" });
+        // 네트워크 끊김과 CORS 거부는 브라우저가 같은 TypeError로 주므로 network 하나로 기록
+        log?.(
+          error instanceof LoopFetchError
+            ? { type: "loop", detail: "fallback", reason: "http", status: error.status }
+            : { type: "loop", detail: "fallback", reason: "network", status: null },
+        );
         useSource(src);
       },
     );
