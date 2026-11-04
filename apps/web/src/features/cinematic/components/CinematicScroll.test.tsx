@@ -541,6 +541,22 @@ describe("CinematicScroll 그룹 영상 미리 받기", () => {
     expect(mocks.preloader.dispose).toHaveBeenCalled();
   });
 
+  it("메인 끝 직전부터 엔딩까지는 그룹 대신 L01을 우선 받기", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    scrollAndFlush(0.9 * ENDING_START);
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("G4");
+
+    scrollAndFlush(0.97 * ENDING_START);
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+
+    // 엔딩 구간에서는 목표 프레임이 3088로 고정이어도 L01 우선이 유지됨
+    mocks.preloader.prioritize.mockClear();
+    scrollAndFlush(endingScrollY(0.3));
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+  });
+
   it("받은 메인 그룹 사본은 player 소스 교체로 전달", () => {
     window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
     render(<CinematicScroll table={table} endingMark={MARK} />);

@@ -240,6 +240,9 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
         loop.preload();
       }
       if (endingProgress !== null) applyEnding(endingProgress);
+      // 메인 끝 직전부터는 L01을 먼저, 엔딩 구간은 프레임이 3088로 고정되므로 프레임 변화와 무관하게 매번 반영
+      // L01은 비트레이트가 느린 회선보다 높아 스트리밍 대체로는 끊김, 큐 맨 뒤에 두면 엔딩에서 G4 정지 화면이 길어짐
+      preloader?.prioritize(progress > preloadAt ? "L01" : table.groups[target.groupIndex].id);
 
       lastProgress = progress;
       diagnostics.progress = progress;
@@ -247,7 +250,6 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       force = false;
       lastMasterFrame = target.masterFrame;
       qaLog.push({ type: "target", progress, masterFrame: target.masterFrame, group: table.groups[target.groupIndex].id });
-      preloader?.prioritize(table.groups[target.groupIndex].id);
       player.setTarget(target);
     };
     // Safari 탭 전환 후 예약된 rAF 콜백이 실행되지 않으면 이후 scroll이 모두 무시되므로 오래된 예약은 버리고 즉시 계산
