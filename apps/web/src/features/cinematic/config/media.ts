@@ -30,7 +30,34 @@ export function resolveLoopPreloadProgress(search: string, debug: boolean): numb
   return debug && requested !== null && LOOP_PRELOAD_CANDIDATES.has(requested) ? Number(requested) : LOOP_PRELOAD_PROGRESS;
 }
 
+/** 운영 전달 변형 디렉터리, 1440p 운영 실측 통과 전까지 승인 원본 4k 유지 */
+export const MEDIA_VARIANT = "4k";
+
+// 승인 manifest의 filename은 모두 `4k/` 아래, 변형은 디렉터리만 바꾸고 파일명은 그대로 유지
+const APPROVED_DIR = "4k/";
+const VARIANT_PATTERN = /^[a-z0-9_]+$/;
+
+/** 승인 파일명(`4k/…`)을 변형 디렉터리로 바꿔 미디어 URL 조립, G1~G4·L01 공통 */
+export function resolveMediaSrc(baseUrl: string, approvedFilename: string, variant: string = MEDIA_VARIANT): string {
+  if (!approvedFilename.startsWith(APPROVED_DIR)) throw new Error(`승인 파일명이 ${APPROVED_DIR}로 시작하지 않음: ${approvedFilename}`);
+  return `${baseUrl}/${variant}/${approvedFilename.slice(APPROVED_DIR.length)}`;
+}
+
 /** S43 독립 루프(L01) URL, 메인 매핑과 별개 */
 export function resolveLoopSrc(): string {
-  return `${resolveMediaBaseUrl()}/4k/${LOOP_FILE}`;
+  return resolveMediaSrc(resolveMediaBaseUrl(), `${APPROVED_DIR}${LOOP_FILE}`);
+}
+
+/**
+ * 진단 모드 전용 변형 디렉터리, `cinematic-media` 값이 경로 이동 문자 없는 이름일 때만 허용
+ * 진단 모드가 아니거나 허용되지 않는 값이면 null
+ */
+export function resolveDebugMediaVariant(search: string, debug: boolean): string | null {
+  const requested = new URLSearchParams(search).get("cinematic-media");
+  return debug && requested !== null && VARIANT_PATTERN.test(requested) ? requested : null;
+}
+
+/** 서버에서 조립된 미디어 URL의 변형 디렉터리(파일명 바로 위)만 교체, 진단 모드 비교용 */
+export function replaceMediaVariant(src: string, variant: string): string {
+  return src.replace(/\/[^/]+(\/[^/]+)$/, `/${variant}$1`);
 }

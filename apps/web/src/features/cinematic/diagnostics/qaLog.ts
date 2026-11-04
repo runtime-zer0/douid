@@ -1,7 +1,13 @@
 import type { EndingPhase } from "../core/endingTimeline";
 import type { GroupId } from "../core/types";
+import type { PreloadKey } from "../playback/mediaPreloader";
 
 export type QaEvent =
+  | { t: number; type: "session"; mediaVariant: string }
+  | { t: number; type: "preload"; group: PreloadKey; detail: "start" }
+  | { t: number; type: "preload"; group: PreloadKey; detail: "buffered"; bytes: number }
+  | { t: number; type: "preload"; group: PreloadKey; detail: "fallback"; reason: "http" | "network"; status: number | null }
+  | { t: number; type: "source_swap"; group: GroupId; visible: boolean }
   | { t: number; type: "target"; progress: number; masterFrame: number; group: GroupId }
   | { t: number; type: "seek"; requestId: number; group: GroupId; webFrame: number; seconds: number }
   | {

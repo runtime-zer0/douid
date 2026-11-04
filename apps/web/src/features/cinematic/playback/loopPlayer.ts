@@ -1,4 +1,5 @@
 import type { QaEventInput } from "../diagnostics/qaLog";
+import { fallbackReason, loadAsObjectUrl } from "./mediaPreloader";
 
 export type LoopPlayer = {
   /** 엔딩 직전 전체 미리 받기 시작 */
@@ -25,20 +26,6 @@ type LoopPlayerOptions = {
   /** 한 프레임 길이(초), 마지막 프레임 판정용 */
   frameSeconds?: number;
 };
-
-/** 응답은 받았지만 성공 상태가 아님, fallback 사유를 네트워크·CORS 실패와 구분하기 위함 */
-class LoopFetchError extends Error {
-  constructor(readonly status: number) {
-    super(`L01 fetch failed: ${status}`);
-  }
-}
-
-/** L01 전체를 받아 Blob URL 생성 */
-async function loadAsObjectUrl(src: string, signal: AbortSignal): Promise<string> {
-  const response = await fetch(src, { signal });
-  if (!response.ok) throw new LoopFetchError(response.status);
-  return URL.createObjectURL(await response.blob());
-}
 
 /**
  * S43 독립 루프(L01) 재생 제어, 메인 그룹 player와 상태를 공유하지 않음
@@ -135,12 +122,7 @@ export function createLoopPlayer(
       },
       (error: unknown) => {
         if (disposed) return;
-        // 네트워크 끊김과 CORS 거부는 브라우저가 같은 TypeError로 주므로 network 하나로 기록
-        log?.(
-          error instanceof LoopFetchError
-            ? { type: "loop", detail: "fallback", reason: "http", status: error.status }
-            : { type: "loop", detail: "fallback", reason: "network", status: null },
-        );
+        log?.({ type: "loop", detail: "fallback", ...fallbackReason(error) });
         useSource(src);
       },
     );

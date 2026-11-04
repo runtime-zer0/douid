@@ -2,7 +2,15 @@
 
 import { type ReactNode, type RefObject, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
-import { LOOP_FRAME_SECONDS, LOOP_RESTART_SECONDS, resolveLoopPreloadProgress, resolveLoopSrc } from "../config/media";
+import {
+  LOOP_FRAME_SECONDS,
+  LOOP_RESTART_SECONDS,
+  MEDIA_VARIANT,
+  replaceMediaVariant,
+  resolveDebugMediaVariant,
+  resolveLoopPreloadProgress,
+  resolveLoopSrc,
+} from "../config/media";
 import { type EndingPhase, resolveEndingState } from "../core/endingTimeline";
 import { computeProgress } from "../core/scrollProgress";
 import { resolveFrame } from "../core/resolveFrame";
@@ -10,6 +18,7 @@ import type { CinematicTable } from "../core/types";
 import { createQaLog } from "../diagnostics/qaLog";
 import { type CinematicPlayer, createCinematicPlayer, type PlayerView } from "../playback/cinematicPlayer";
 import { createLoopPlayer } from "../playback/loopPlayer";
+import { createMediaPreloader } from "../playback/mediaPreloader";
 import { cn } from "@/shared/lib/utils";
 
 import { CinematicOverlay } from "./CinematicOverlay";
@@ -102,6 +111,13 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
     // 페이지 이동으로 언마운트될 때 ref가 effect 정리보다 먼저 null이 되므로, 남은 rAF가 null video를 건드리지 않도록 복사본 사용
     const videos = [...videoRefs.current] as HTMLVideoElement[];
     const qaLog = createQaLog(debug);
+    // 표는 서버에서 운영 변형으로 조립되므로 진단 모드 후보 비교는 클라이언트에서 디렉터리만 교체
+    const debugVariant = resolveDebugMediaVariant(window.location.search, debug);
+    const withVariant = (src: string) => (debugVariant ? replaceMediaVariant(src, debugVariant) : src);
+    const mediaVariant = debugVariant ?? MEDIA_VARIANT;
+    // 4k 원본(메인 852MB)은 통째로 받기에 너무 커서 전달 변형일 때만 미리 받기
+    const prefetching = mediaVariant !== "4k";
+    qaLog.push({ type: "session", mediaVariant });
 
     // Safari는 탭 숨김 동안 프레임을 버리거나 복구 load() 때 화면을 지워 블랙 플래시가 생김
     // 화면 그룹의 마지막 프레임을 canvas로 덮고 새 프레임 표시 확인 후 걷어냄, 같은 task 안에서 바로 반영되도록 DOM 직접 갱신
@@ -115,7 +131,8 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       cover.style.visibility = "hidden";
     };
 
-    const player = createCinematicPlayer(videos, table.groups, {
+    const groups = table.groups.map((group) => ({ ...group, src: withVariant(group.src) }));
+    const player = createCinematicPlayer(videos, groups, {
       onView: (next) => {
         setView(next);
         if (next.phase === "presented" || next.phase === "presented_unverified") hideCover();
@@ -124,19 +141,34 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       onBeforeReload: (groupIndex) => {
         if (player.getSnapshot().view.visibleGroupIndex === groupIndex) showCover();
       },
+      prefetching,
     });
+    const loopSrc = withVariant(resolveLoopSrc());
+    // G1부터 순서대로 하나씩 받아 메모리 사본으로 교체, 실패한 그룹은 스트리밍 유지
+    const preloader = prefetching
+      ? createMediaPreloader([...groups.map((group) => ({ key: group.id, src: group.src })), { key: "L01", src: loopSrc }], {
+          log: qaLog.push,
+          onBuffered: (key, url) => {
+            const groupIndex = groups.findIndex((group) => group.id === key);
+            if (groupIndex >= 0) player.replaceSource(groupIndex, url);
+          },
+        })
+      : null;
     const diagnostics = diagnosticsRef.current;
     playerRef.current = player;
     diagnostics.player = player;
 
     // L01은 메인 player·매핑과 분리된 독립 루프, 로딩 전·실패 시에는 아래 G4 3088이 그대로 보임
-    const loop = createLoopPlayer(loopVideo, resolveLoopSrc(), {
+    const loop = createLoopPlayer(loopVideo, loopSrc, {
       onVisibleChange: setLoopVisible,
       log: qaLog.push,
       restartAt: LOOP_RESTART_SECONDS,
       frameSeconds: LOOP_FRAME_SECONDS,
+      // 미리 받기 중이면 L01도 큐 순서(G4 다음)를 따름, 아니면 기존처럼 preloadAt에서 직접 받기
+      loadSource: preloader ? () => preloader.whenReady("L01") : undefined,
     });
-    let loopPreloaded = false;
+    if (preloader) loop.preload();
+    let loopPreloaded = preloader !== null;
     const preloadAt = resolveLoopPreloadProgress(window.location.search, debug);
     let endingPhase: EndingPhase | null = null;
 
@@ -215,6 +247,7 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       force = false;
       lastMasterFrame = target.masterFrame;
       qaLog.push({ type: "target", progress, masterFrame: target.masterFrame, group: table.groups[target.groupIndex].id });
+      preloader?.prioritize(table.groups[target.groupIndex].id);
       player.setTarget(target);
     };
     // Safari 탭 전환 후 예약된 rAF 콜백이 실행되지 않으면 이후 scroll이 모두 무시되므로 오래된 예약은 버리고 즉시 계산
@@ -272,6 +305,7 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       player.dispose();
       loop.dispose();
+      preloader?.dispose();
       qaLog.dispose();
       playerRef.current = null;
       diagnostics.player = null;
