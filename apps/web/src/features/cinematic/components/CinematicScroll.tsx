@@ -116,7 +116,9 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
     const withVariant = (src: string) => (debugVariant ? replaceMediaVariant(src, debugVariant) : src);
     const mediaVariant = debugVariant ?? MEDIA_VARIANT;
     // 4k 원본(메인 852MB)은 통째로 받기에 너무 커서 전달 변형일 때만 미리 받기
-    const prefetching = mediaVariant !== "4k";
+    // 1440p도 방문당 438MB라 데이터 절약 모드면 스트리밍만 사용, saveData는 Chromium 계열만 제공
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    const prefetching = mediaVariant !== "4k" && !saveData;
     qaLog.push({ type: "session", mediaVariant });
 
     // Safari는 탭 숨김 동안 프레임을 버리거나 복구 load() 때 화면을 지워 블랙 플래시가 생김
@@ -241,8 +243,9 @@ function ScrollStage({ table, endingMark, sectionRef, active, debug }: ScrollSta
       }
       if (endingProgress !== null) applyEnding(endingProgress);
       // 메인 끝 직전부터는 L01을 먼저, 엔딩 구간은 프레임이 3088로 고정되므로 프레임 변화와 무관하게 매번 반영
-      // L01은 비트레이트가 느린 회선보다 높아 스트리밍 대체로는 끊김, 큐 맨 뒤에 두면 엔딩에서 G4 정지 화면이 길어짐
-      preloader?.prioritize(progress > preloadAt ? "L01" : table.groups[target.groupIndex].id);
+      // L01은 비트레이트가 느린 회선보다 높아 스트리밍 대체로는 끊김, 진행 중인 그룹 받기를 기다리면 엔딩에서 G4 정지 화면이 21~33초 유지(2026-11-05 Preview 실측)되어 중단 후 먼저 받음
+      if (progress > preloadAt) preloader?.preempt("L01");
+      else preloader?.prioritize(table.groups[target.groupIndex].id);
 
       lastProgress = progress;
       diagnostics.progress = progress;

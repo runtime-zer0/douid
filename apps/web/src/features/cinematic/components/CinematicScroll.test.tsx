@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
     dispose: vi.fn(),
   },
   onLoopVisible: null as ((visible: boolean) => void) | null,
-  preloader: { prioritize: vi.fn(), whenReady: vi.fn(), dispose: vi.fn() },
+  preloader: { prioritize: vi.fn(), preempt: vi.fn(), whenReady: vi.fn(), dispose: vi.fn() },
 }));
 
 vi.mock("../playback/mediaPreloader", () => ({
@@ -523,6 +523,20 @@ describe("CinematicScroll 그룹 영상 미리 받기", () => {
     expect(mocks.loop.preload).toHaveBeenCalledTimes(1);
   });
 
+  it("데이터 절약 모드면 전달 변형이어도 미리 받기 없이 스트리밍만 사용", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    Object.defineProperty(navigator, "connection", { value: { saveData: true }, configurable: true });
+    try {
+      render(<CinematicScroll table={table} endingMark={MARK} />);
+
+      expect(createMediaPreloader).not.toHaveBeenCalled();
+      expect(vi.mocked(createCinematicPlayer).mock.calls[0][2]).toMatchObject({ prefetching: false });
+      expect(mocks.loop.preload).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(navigator, "connection");
+    }
+  });
+
   it("목표 그룹이 바뀌면 그 그룹을 우선 받기, 언마운트 시 정리", () => {
     window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
     // 진단 패널이 rAF마다 읽는 player 상태
@@ -541,20 +555,23 @@ describe("CinematicScroll 그룹 영상 미리 받기", () => {
     expect(mocks.preloader.dispose).toHaveBeenCalled();
   });
 
-  it("메인 끝 직전부터 엔딩까지는 그룹 대신 L01을 우선 받기", () => {
+  it("메인 끝 직전부터 엔딩까지는 진행 중인 받기를 중단하고 L01을 먼저 받기", () => {
     window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
     render(<CinematicScroll table={table} endingMark={MARK} />);
 
     scrollAndFlush(0.9 * ENDING_START);
     expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("G4");
+    expect(mocks.preloader.preempt).not.toHaveBeenCalled();
 
     scrollAndFlush(0.97 * ENDING_START);
-    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+    expect(mocks.preloader.preempt).toHaveBeenLastCalledWith("L01");
 
-    // 엔딩 구간에서는 목표 프레임이 3088로 고정이어도 L01 우선이 유지됨
+    // 엔딩 구간에서는 목표 프레임이 3088로 고정이어도 L01 우선이 유지되고 그룹 우선 요청은 나가지 않음
     mocks.preloader.prioritize.mockClear();
+    mocks.preloader.preempt.mockClear();
     scrollAndFlush(endingScrollY(0.3));
-    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+    expect(mocks.preloader.preempt).toHaveBeenLastCalledWith("L01");
+    expect(mocks.preloader.prioritize).not.toHaveBeenCalled();
   });
 
   it("받은 메인 그룹 사본은 player 소스 교체로 전달", () => {
