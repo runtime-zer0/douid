@@ -487,7 +487,7 @@ describe("CinematicScroll 진단 모드 미디어 변형", () => {
 
     const sources = requestedSources();
     expect(sources).toHaveLength(5);
-    sources.forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/1440p_g3\/DOUID_(G[1-4]|L01)_4K_30FPS_WEB_H264\.mp4$/));
+    sources.forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/1440p_g3\/DOUID_(G[1-4]|L01)_1440P_30FPS_WEB_H264\.mp4$/));
     expect(window.__DOUID_CINEMATIC_QA__?.events()[0]).toMatchObject({ type: "session", mediaVariant: "1440p_g3" });
   });
 

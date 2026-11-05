@@ -54,10 +54,14 @@ describe("resolveMediaSrc", () => {
     expect(resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4")).toBe(`${BASE}/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4`);
   });
 
-  it("변형을 주면 4k/만 변형 디렉터리로 바꾸고 파일명은 유지, 이중 슬래시 없음", () => {
+  it("1440p 변형이면 디렉터리와 파일명 해상도 표기를 함께 교체, 이중 슬래시 없음", () => {
     const src = resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "1440p");
-    expect(src).toBe(`${BASE}/1440p/DOUID_G1_4K_30FPS_WEB_H264.mp4`);
+    expect(src).toBe(`${BASE}/1440p/DOUID_G1_1440P_30FPS_WEB_H264.mp4`);
     expect(src.replace(/^https?:\/\//, "")).not.toContain("//");
+  });
+
+  it("L01도 같은 규칙으로 1440P 파일명", () => {
+    expect(resolveMediaSrc(BASE, "4k/DOUID_L01_4K_30FPS_WEB_H264.mp4", "1440p")).toBe(`${BASE}/1440p/DOUID_L01_1440P_30FPS_WEB_H264.mp4`);
   });
 
   it.each(["DOUID_G1_4K_30FPS_WEB_H264.mp4", "1440p/DOUID_G1.mp4", "/4k/DOUID_G1.mp4", "4K/DOUID_G1.mp4"])(
@@ -88,9 +92,20 @@ describe("resolveDebugMediaVariant", () => {
 
 describe("replaceMediaVariant", () => {
   it.each([
-    ["운영 CDN", "https://cdn.douid.kr/cinematic/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "https://cdn.douid.kr/cinematic/1440p_g3/DOUID_G1_4K_30FPS_WEB_H264.mp4"],
-    ["로컬", "/media/cinematic/4k/DOUID_L01_4K_30FPS_WEB_H264.mp4", "/media/cinematic/1440p_g3/DOUID_L01_4K_30FPS_WEB_H264.mp4"],
-  ])("%s URL의 파일명 바로 위 디렉터리만 교체", (_label, src, expected) => {
+    ["운영 CDN", "https://cdn.douid.kr/cinematic/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "https://cdn.douid.kr/cinematic/1440p_g3/DOUID_G1_1440P_30FPS_WEB_H264.mp4"],
+    ["로컬", "/media/cinematic/4k/DOUID_L01_4K_30FPS_WEB_H264.mp4", "/media/cinematic/1440p_g3/DOUID_L01_1440P_30FPS_WEB_H264.mp4"],
+  ])("%s URL의 디렉터리와 파일명 해상도 표기 교체", (_label, src, expected) => {
     expect(replaceMediaVariant(src, "1440p_g3")).toBe(expected);
+  });
+
+  it("운영이 1440p여도 진단 모드 4k 비교는 원래 _4K_ 파일명으로 복원", () => {
+    expect(replaceMediaVariant("https://cdn.douid.kr/cinematic/1440p/DOUID_G2_1440P_30FPS_WEB_H264.mp4", "4k")).toBe(
+      "https://cdn.douid.kr/cinematic/4k/DOUID_G2_4K_30FPS_WEB_H264.mp4",
+    );
+  });
+
+  it("4k에서 4k로 바꾸면 URL 그대로", () => {
+    const src = "/media/cinematic/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4";
+    expect(replaceMediaVariant(src, "4k")).toBe(src);
   });
 });
