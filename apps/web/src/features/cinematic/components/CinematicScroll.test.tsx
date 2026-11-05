@@ -102,6 +102,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   window.scrollY = 0;
+  window.history.replaceState(null, "", "/");
 });
 
 /** 스크롤 위치 설정, 섹션 top은 문서 0 기준이고 높이는 19vh 배수 */
@@ -385,15 +386,6 @@ describe("CinematicScroll 엔딩 (US2·US3)", () => {
     expect(mocks.player.setTarget).toHaveBeenCalledTimes(1);
   });
 
-  it("메인 구간 끝 직전에 L01 미리 받기", () => {
-    render(<CinematicScroll table={table} endingMark={MARK} />);
-    scrollAndFlush(0.9 * ENDING_START);
-    expect(mocks.loop.preload).not.toHaveBeenCalled();
-
-    scrollAndFlush(0.97 * ENDING_START);
-    expect(mocks.loop.preload).toHaveBeenCalledTimes(1);
-  });
-
   it("엔딩 진입 시 L01 재생, G4로 돌아오면 정지, 메인 player에는 새 요청 없음", () => {
     render(<CinematicScroll table={table} endingMark={MARK} />);
     scrollAndFlush(ENDING_START);
@@ -495,7 +487,7 @@ describe("CinematicScroll 진단 모드 미디어 변형", () => {
     window.history.replaceState(null, "", "/?cinematic-media=1440p_g3");
     render(<CinematicScroll table={table} endingMark={MARK} />);
 
-    requestedSources().forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/4k\//));
+    requestedSources().forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/1440p\/DOUID_(G[1-4]|L01)_1440P_/));
   });
 });
 
@@ -504,12 +496,23 @@ describe("CinematicScroll 그룹 영상 미리 받기", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("운영 4k 원본이면 미리 받기 없이 L01은 메인 끝 직전에만 받기", () => {
+  it("4k 원본이면 미리 받기 없이 L01은 메인 끝 직전에만 받기", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=4k");
+    mocks.player.getSnapshot.mockReturnValue({
+      target: null,
+      view: { visibleGroupIndex: null, phase: "initializing", error: null },
+      seekers: [],
+      targetMedia: null,
+    });
     render(<CinematicScroll table={table} endingMark={MARK} />);
 
     expect(createMediaPreloader).not.toHaveBeenCalled();
     expect(vi.mocked(createCinematicPlayer).mock.calls[0][2]).toMatchObject({ prefetching: false });
+    scrollAndFlush(0.9 * ENDING_START);
     expect(mocks.loop.preload).not.toHaveBeenCalled();
+
+    scrollAndFlush(0.97 * ENDING_START);
+    expect(mocks.loop.preload).toHaveBeenCalledTimes(1);
   });
 
   it("전달 변형이면 G1~G4·L01을 순서대로 받고 L01은 큐를 거쳐 받음", () => {

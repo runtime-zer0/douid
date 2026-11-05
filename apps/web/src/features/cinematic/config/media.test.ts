@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { replaceMediaVariant, resolveDebugMediaVariant, resolveLoopPreloadProgress, resolveLoopSrc, resolveMediaSrc } from "./media";
 
-const FILE = "DOUID_L01_4K_30FPS_WEB_H264.mp4";
+const FILE = "DOUID_L01_1440P_30FPS_WEB_H264.mp4";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -10,13 +10,13 @@ afterEach(() => {
 
 describe("resolveLoopSrc", () => {
   it.each([
-    ["미설정", undefined, `/media/cinematic/4k/${FILE}`],
-    ["빈 문자열", "", `/media/cinematic/4k/${FILE}`],
-    ["공백", "   ", `/media/cinematic/4k/${FILE}`],
-    ["운영 base", "https://cdn.douid.kr/cinematic", `https://cdn.douid.kr/cinematic/4k/${FILE}`],
-    ["끝 슬래시 1개", "https://cdn.douid.kr/cinematic/", `https://cdn.douid.kr/cinematic/4k/${FILE}`],
-    ["끝 슬래시 여러 개", "https://cdn.douid.kr/cinematic///", `https://cdn.douid.kr/cinematic/4k/${FILE}`],
-  ])("%s이면 <base>/4k/<파일명>으로 조립하고 경로에 이중 슬래시가 없음", (_label, base, expected) => {
+    ["미설정", undefined, `/media/cinematic/1440p/${FILE}`],
+    ["빈 문자열", "", `/media/cinematic/1440p/${FILE}`],
+    ["공백", "   ", `/media/cinematic/1440p/${FILE}`],
+    ["운영 base", "https://cdn.douid.kr/cinematic", `https://cdn.douid.kr/cinematic/1440p/${FILE}`],
+    ["끝 슬래시 1개", "https://cdn.douid.kr/cinematic/", `https://cdn.douid.kr/cinematic/1440p/${FILE}`],
+    ["끝 슬래시 여러 개", "https://cdn.douid.kr/cinematic///", `https://cdn.douid.kr/cinematic/1440p/${FILE}`],
+  ])("%s이면 <base>/1440p/<파일명>으로 조립하고 경로에 이중 슬래시가 없음", (_label, base, expected) => {
     vi.stubEnv("NEXT_PUBLIC_CINEMATIC_MEDIA_BASE_URL", base);
 
     const src = resolveLoopSrc();
@@ -50,8 +50,12 @@ describe("resolveLoopPreloadProgress", () => {
 describe("resolveMediaSrc", () => {
   const BASE = "https://cdn.douid.kr/cinematic";
 
-  it("기본은 승인 파일명 그대로 4k 디렉터리", () => {
-    expect(resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4")).toBe(`${BASE}/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4`);
+  it("기본은 운영 변형 1440p 디렉터리와 1440P 파일명", () => {
+    expect(resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4")).toBe(`${BASE}/1440p/DOUID_G1_1440P_30FPS_WEB_H264.mp4`);
+  });
+
+  it("4k 변형이면 승인 파일명 그대로", () => {
+    expect(resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "4k")).toBe(`${BASE}/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4`);
   });
 
   it("1440p 변형이면 디렉터리와 파일명 해상도 표기를 함께 교체, 이중 슬래시 없음", () => {

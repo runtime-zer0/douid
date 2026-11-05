@@ -30,8 +30,8 @@ export function resolveLoopPreloadProgress(search: string, debug: boolean): numb
   return debug && requested !== null && LOOP_PRELOAD_CANDIDATES.has(requested) ? Number(requested) : LOOP_PRELOAD_PROGRESS;
 }
 
-/** 운영 전달 변형 디렉터리, 1440p 운영 실측 통과 전까지 승인 원본 4k 유지 */
-export const MEDIA_VARIANT = "4k";
+/** 운영 전달 변형 디렉터리, Preview CDN 실측 통과 후 1440p 전환(#53), 문제 시 "4k"로 되돌려 복구 */
+export const MEDIA_VARIANT = "1440p";
 
 // 승인 manifest의 filename은 모두 `4k/` 아래 `_4K_` 표기, 변형은 디렉터리와 파일명 해상도 표기만 교체
 const APPROVED_DIR = "4k/";
