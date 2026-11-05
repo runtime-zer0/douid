@@ -98,6 +98,56 @@ describe("mediaPreloader 순서와 동시 받기", () => {
   });
 });
 
+describe("mediaPreloader 중단 후 먼저 받기", () => {
+  it("진행 중 받기를 중단하고 대상을 바로 받은 뒤, 중단한 그룹은 처음부터 다시 받음", async () => {
+    const { preloader, requests, finish, log } = setup();
+    await finish(0);
+    expect(requests[1].src).toBe("/1440p/g2.mp4");
+
+    preloader.preempt("L01");
+
+    expect(requests[1].signal.aborted).toBe(true);
+    expect(requests[2].src).toBe("/1440p/l01.mp4");
+    expect(log).toHaveBeenCalledWith({ type: "preload", group: "G2", detail: "preempted", by: "L01" });
+
+    await finish(2);
+    expect(requests[3].src).toBe("/1440p/g2.mp4");
+  });
+
+  it("중단된 받기가 늦게 끝나도 사본을 만들지 않고 받기를 하나만 유지", async () => {
+    const { preloader, requests, finish, onBuffered } = setup();
+    preloader.preempt("L01");
+
+    await finish(0);
+
+    expect(onBuffered).not.toHaveBeenCalled();
+    expect(requests).toHaveLength(2);
+    await expect(Promise.race([preloader.whenReady("G1"), Promise.resolve("pending")])).resolves.toBe("pending");
+  });
+
+  it("대상이 이미 받는 중이거나 받았으면 아무것도 중단하지 않음", async () => {
+    const { preloader, requests, finish } = setup();
+    preloader.preempt("L01");
+    preloader.preempt("L01");
+    expect(requests).toHaveLength(2);
+    expect(requests[1].signal.aborted).toBe(false);
+
+    await finish(1);
+    preloader.preempt("L01");
+    expect(requests.filter((request) => request.signal.aborted)).toHaveLength(1);
+  });
+
+  it("이미 받은 항목을 대상으로 주면 진행 중 받기를 중단하지 않음", async () => {
+    const { preloader, requests, finish } = setup();
+    await finish(0);
+
+    preloader.preempt("G1");
+
+    expect(requests[1].signal.aborted).toBe(false);
+    expect(requests).toHaveLength(2);
+  });
+});
+
 describe("mediaPreloader 실패", () => {
   it("HTTP 오류면 상태 코드와 함께 fallback 기록, 원래 오류로 거절하고 다음 그룹 진행", async () => {
     const { preloader, requests, fail, log, onBuffered } = setup();

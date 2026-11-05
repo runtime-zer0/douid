@@ -31,6 +31,8 @@ export const fallbackReason = (error: unknown) =>
 export type MediaPreloader = {
   /** 아직 받지 않은 항목을 다음 순서로 올림, 진행 중 받기는 중단하지 않음 */
   prioritize: (key: PreloadKey) => void;
+  /** 아직 받지 않은 항목을 바로 받기 시작, 진행 중인 다른 받기는 중단하고 대기열로 되돌림(처음부터 다시 받음) */
+  preempt: (key: PreloadKey) => void;
   /** 받기 완료 시 Blob URL, 실패 시 원래 오류로 거절 */
   whenReady: (key: PreloadKey) => Promise<string>;
   dispose: () => void;
@@ -61,9 +63,9 @@ export function createMediaPreloader(
   { onBuffered, log, load = fetchMediaBlob }: PreloaderOptions = {},
 ): MediaPreloader {
   const entries = items.map<Entry>(({ key, src }) => ({ key, src, state: "queued", url: null, error: null, waiters: [] }));
-  const abort = new AbortController();
+  // 진행 중 받기 하나만 존재, 중단(preempt·dispose)된 받기의 늦은 결과는 signal로 무시
+  let current: { entry: Entry; abort: AbortController } | null = null;
   let priority: PreloadKey | null = null;
-  let loading = false;
   let disposed = false;
 
   const find = (key: PreloadKey) => entries.find((entry) => entry.key === key);
@@ -74,33 +76,34 @@ export function createMediaPreloader(
   }
 
   function pump() {
-    if (loading || disposed) return;
+    if (current || disposed) return;
     const prioritized = priority === null ? undefined : find(priority);
     const entry = prioritized?.state === "queued" ? prioritized : entries.find((candidate) => candidate.state === "queued");
     priority = null;
     if (!entry) return;
 
-    loading = true;
+    const abort = new AbortController();
+    current = { entry, abort };
     entry.state = "loading";
     log?.({ type: "preload", group: entry.key, detail: "start" });
     load(entry.src, abort.signal).then(
       (blob) => {
-        if (disposed) return;
+        if (abort.signal.aborted) return;
         entry.state = "buffered";
         entry.url = URL.createObjectURL(blob);
         log?.({ type: "preload", group: entry.key, detail: "buffered", bytes: blob.size });
         onBuffered?.(entry.key, entry.url);
         settle(entry);
-        loading = false;
+        current = null;
         pump();
       },
       (error: unknown) => {
-        if (disposed) return;
+        if (abort.signal.aborted) return;
         entry.state = "failed";
         entry.error = error;
         log?.({ type: "preload", group: entry.key, detail: "fallback", ...fallbackReason(error) });
         settle(entry);
-        loading = false;
+        current = null;
         pump();
       },
     );
@@ -114,6 +117,19 @@ export function createMediaPreloader(
       priority = key;
       pump();
     },
+    preempt(key) {
+      if (disposed || find(key)?.state !== "queued") return;
+      // 대상이 queued인 동안만 동작하고 대상은 다시 queued가 되지 않으므로 대상별 중단은 최대 한 번
+      if (current) {
+        const { entry, abort } = current;
+        abort.abort();
+        entry.state = "queued";
+        current = null;
+        log?.({ type: "preload", group: entry.key, detail: "preempted", by: key });
+      }
+      priority = key;
+      pump();
+    },
     whenReady(key) {
       const entry = find(key);
       if (!entry) return Promise.reject(new Error(`preload 대상 아님: ${key}`));
@@ -124,7 +140,7 @@ export function createMediaPreloader(
     dispose() {
       if (disposed) return;
       disposed = true;
-      abort.abort();
+      current?.abort.abort();
       entries.forEach((entry) => {
         if (entry.url) URL.revokeObjectURL(entry.url);
       });

@@ -5,6 +5,7 @@ import type { PreloadKey } from "../playback/mediaPreloader";
 export type QaEvent =
   | { t: number; type: "session"; mediaVariant: string }
   | { t: number; type: "preload"; group: PreloadKey; detail: "start" }
+  | { t: number; type: "preload"; group: PreloadKey; detail: "preempted"; by: PreloadKey }
   | { t: number; type: "preload"; group: PreloadKey; detail: "buffered"; bytes: number }
   | { t: number; type: "preload"; group: PreloadKey; detail: "fallback"; reason: "http" | "network"; status: number | null }
   | { t: number; type: "source_swap"; group: GroupId; visible: boolean }
