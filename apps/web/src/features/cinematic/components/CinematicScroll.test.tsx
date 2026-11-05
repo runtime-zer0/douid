@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import mappingJson from "../config/DOUID_SCROLL_MAPPING.json";
 import manifestJson from "../config/DOUID_WEB_GROUP_MANIFEST.json";
 import { buildCinematicTable, type ManifestSource, type MappingSource } from "../core/mapping.server";
+import { createCinematicPlayer } from "../playback/cinematicPlayer";
+import { createLoopPlayer } from "../playback/loopPlayer";
+import { createMediaPreloader } from "../playback/mediaPreloader";
 import { resolveFrame } from "../core/resolveFrame";
 import type { PlayerView } from "../playback/cinematicPlayer";
 import { CinematicScroll } from "./CinematicScroll";
@@ -24,6 +27,11 @@ const mocks = vi.hoisted(() => ({
     dispose: vi.fn(),
   },
   onLoopVisible: null as ((visible: boolean) => void) | null,
+  preloader: { prioritize: vi.fn(), whenReady: vi.fn(), dispose: vi.fn() },
+}));
+
+vi.mock("../playback/mediaPreloader", () => ({
+  createMediaPreloader: vi.fn(() => mocks.preloader),
 }));
 
 vi.mock("../playback/cinematicPlayer", () => ({
@@ -460,5 +468,105 @@ describe("CinematicScroll 엔딩 (US2·US3)", () => {
     unmount();
 
     expect(mocks.loop.dispose).toHaveBeenCalled();
+  });
+});
+
+describe("CinematicScroll 진단 모드 미디어 변형", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  const requestedSources = () => [
+    ...vi.mocked(createCinematicPlayer).mock.calls[0][1].map((group) => group.src),
+    vi.mocked(createLoopPlayer).mock.calls[0][1],
+  ];
+
+  it("진단 모드에서 cinematic-media를 주면 G1~G4·L01 모두 그 디렉터리로 요청하고 세션 시작에 기록", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g3");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    const sources = requestedSources();
+    expect(sources).toHaveLength(5);
+    sources.forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/1440p_g3\/DOUID_(G[1-4]|L01)_1440P_30FPS_WEB_H264\.mp4$/));
+    expect(window.__DOUID_CINEMATIC_QA__?.events()[0]).toMatchObject({ type: "session", mediaVariant: "1440p_g3" });
+  });
+
+  it("진단 모드가 아니면 cinematic-media를 무시하고 운영 변형 유지", () => {
+    window.history.replaceState(null, "", "/?cinematic-media=1440p_g3");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    requestedSources().forEach((src) => expect(src).toMatch(/^\/media\/cinematic\/4k\//));
+  });
+});
+
+describe("CinematicScroll 그룹 영상 미리 받기", () => {
+  afterEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("운영 4k 원본이면 미리 받기 없이 L01은 메인 끝 직전에만 받기", () => {
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    expect(createMediaPreloader).not.toHaveBeenCalled();
+    expect(vi.mocked(createCinematicPlayer).mock.calls[0][2]).toMatchObject({ prefetching: false });
+    expect(mocks.loop.preload).not.toHaveBeenCalled();
+  });
+
+  it("전달 변형이면 G1~G4·L01을 순서대로 받고 L01은 큐를 거쳐 받음", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    const [items] = vi.mocked(createMediaPreloader).mock.calls[0];
+    expect(items.map((item) => item.key)).toEqual(["G1", "G2", "G3", "G4", "L01"]);
+    items.forEach((item) => expect(item.src).toContain("/1440p_g5/"));
+    expect(vi.mocked(createCinematicPlayer).mock.calls[0][2]).toMatchObject({ prefetching: true });
+    expect(mocks.loop.preload).toHaveBeenCalledTimes(1);
+  });
+
+  it("목표 그룹이 바뀌면 그 그룹을 우선 받기, 언마운트 시 정리", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    // 진단 패널이 rAF마다 읽는 player 상태
+    mocks.player.getSnapshot.mockReturnValue({
+      target: null,
+      view: { visibleGroupIndex: null, phase: "initializing", error: null },
+      seekers: [],
+      targetMedia: null,
+    });
+    const { unmount } = render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    scrollAndFlush(10000);
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith(table.groups[expectedTarget(10000)!.groupIndex].id);
+
+    unmount();
+    expect(mocks.preloader.dispose).toHaveBeenCalled();
+  });
+
+  it("메인 끝 직전부터 엔딩까지는 그룹 대신 L01을 우선 받기", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+
+    scrollAndFlush(0.9 * ENDING_START);
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("G4");
+
+    scrollAndFlush(0.97 * ENDING_START);
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+
+    // 엔딩 구간에서는 목표 프레임이 3088로 고정이어도 L01 우선이 유지됨
+    mocks.preloader.prioritize.mockClear();
+    scrollAndFlush(endingScrollY(0.3));
+    expect(mocks.preloader.prioritize).toHaveBeenLastCalledWith("L01");
+  });
+
+  it("받은 메인 그룹 사본은 player 소스 교체로 전달", () => {
+    window.history.replaceState(null, "", "/?cinematic-debug=1&cinematic-media=1440p_g5");
+    render(<CinematicScroll table={table} endingMark={MARK} />);
+    const replaceSource = vi.fn();
+    Object.assign(mocks.player, { replaceSource });
+
+    vi.mocked(createMediaPreloader).mock.calls[0][1]?.onBuffered?.("G3", "blob:g3");
+    vi.mocked(createMediaPreloader).mock.calls[0][1]?.onBuffered?.("L01", "blob:l01");
+
+    expect(replaceSource).toHaveBeenCalledTimes(1);
+    expect(replaceSource).toHaveBeenCalledWith(2, "blob:g3");
   });
 });

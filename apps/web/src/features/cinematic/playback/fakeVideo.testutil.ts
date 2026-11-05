@@ -6,14 +6,14 @@ export class FakeVideo extends EventTarget {
   networkState = 1;
   error: { code: number } | null = null;
   preload = "metadata";
-  src = "";
+  private source = "";
   duration = Number.NaN;
   seeks: number[] = [];
   load = vi.fn(() => {
     this.readyState = 0;
   });
   removeAttribute = vi.fn((name: string) => {
-    if (name === "src") this.src = "";
+    if (name === "src") this.source = "";
   });
   play = vi.fn(() => Promise.resolve());
   pause = vi.fn();
@@ -24,6 +24,16 @@ export class FakeVideo extends EventTarget {
   private frameCallbacks = new Map<number, VideoFrameRequestCallback>();
   private nextHandle = 1;
   private time = 0;
+
+  /** 브라우저처럼 소스를 바꾸면 준비 상태가 처음으로 돌아감 */
+  get src() {
+    return this.source;
+  }
+
+  set src(value: string) {
+    this.source = value;
+    this.readyState = 0;
+  }
 
   get currentTime() {
     return this.time;

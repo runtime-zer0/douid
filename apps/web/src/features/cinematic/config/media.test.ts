@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { resolveLoopPreloadProgress, resolveLoopSrc } from "./media";
+import { replaceMediaVariant, resolveDebugMediaVariant, resolveLoopPreloadProgress, resolveLoopSrc, resolveMediaSrc } from "./media";
 
 const FILE = "DOUID_L01_4K_30FPS_WEB_H264.mp4";
 
@@ -44,5 +44,68 @@ describe("resolveLoopPreloadProgress", () => {
 
   it("쿼리가 없으면 기본값", () => {
     expect(resolveLoopPreloadProgress("", true)).toBe(0.95);
+  });
+});
+
+describe("resolveMediaSrc", () => {
+  const BASE = "https://cdn.douid.kr/cinematic";
+
+  it("기본은 승인 파일명 그대로 4k 디렉터리", () => {
+    expect(resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4")).toBe(`${BASE}/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4`);
+  });
+
+  it("1440p 변형이면 디렉터리와 파일명 해상도 표기를 함께 교체, 이중 슬래시 없음", () => {
+    const src = resolveMediaSrc(BASE, "4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "1440p");
+    expect(src).toBe(`${BASE}/1440p/DOUID_G1_1440P_30FPS_WEB_H264.mp4`);
+    expect(src.replace(/^https?:\/\//, "")).not.toContain("//");
+  });
+
+  it("L01도 같은 규칙으로 1440P 파일명", () => {
+    expect(resolveMediaSrc(BASE, "4k/DOUID_L01_4K_30FPS_WEB_H264.mp4", "1440p")).toBe(`${BASE}/1440p/DOUID_L01_1440P_30FPS_WEB_H264.mp4`);
+  });
+
+  it.each(["DOUID_G1_4K_30FPS_WEB_H264.mp4", "1440p/DOUID_G1.mp4", "/4k/DOUID_G1.mp4", "4K/DOUID_G1.mp4"])(
+    "승인 파일명이 4k/로 시작하지 않으면 '%s' 오류",
+    (filename) => {
+      expect(() => resolveMediaSrc(BASE, filename)).toThrow();
+    },
+  );
+});
+
+describe("resolveDebugMediaVariant", () => {
+  it.each(["4k", "1440p", "1440p_g3", "1440p_g5"])("진단 모드에서 '%s' 허용", (value) => {
+    expect(resolveDebugMediaVariant(`?cinematic-debug=1&cinematic-media=${value}`, true)).toBe(value);
+  });
+
+  it.each(["..", "../4k", "1440p/../4k", "a/b", "", "1440P", "1440p%2F", "%2e%2e"])("경로 이동·허용 밖 값 '%s'은 무시", (value) => {
+    expect(resolveDebugMediaVariant(`?cinematic-media=${value}`, true)).toBeNull();
+  });
+
+  it("진단 모드가 아니면 무시", () => {
+    expect(resolveDebugMediaVariant("?cinematic-media=1440p_g3", false)).toBeNull();
+  });
+
+  it("쿼리가 없으면 null", () => {
+    expect(resolveDebugMediaVariant("", true)).toBeNull();
+  });
+});
+
+describe("replaceMediaVariant", () => {
+  it.each([
+    ["운영 CDN", "https://cdn.douid.kr/cinematic/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4", "https://cdn.douid.kr/cinematic/1440p_g3/DOUID_G1_1440P_30FPS_WEB_H264.mp4"],
+    ["로컬", "/media/cinematic/4k/DOUID_L01_4K_30FPS_WEB_H264.mp4", "/media/cinematic/1440p_g3/DOUID_L01_1440P_30FPS_WEB_H264.mp4"],
+  ])("%s URL의 디렉터리와 파일명 해상도 표기 교체", (_label, src, expected) => {
+    expect(replaceMediaVariant(src, "1440p_g3")).toBe(expected);
+  });
+
+  it("운영이 1440p여도 진단 모드 4k 비교는 원래 _4K_ 파일명으로 복원", () => {
+    expect(replaceMediaVariant("https://cdn.douid.kr/cinematic/1440p/DOUID_G2_1440P_30FPS_WEB_H264.mp4", "4k")).toBe(
+      "https://cdn.douid.kr/cinematic/4k/DOUID_G2_4K_30FPS_WEB_H264.mp4",
+    );
+  });
+
+  it("4k에서 4k로 바꾸면 URL 그대로", () => {
+    const src = "/media/cinematic/4k/DOUID_G1_4K_30FPS_WEB_H264.mp4";
+    expect(replaceMediaVariant(src, "4k")).toBe(src);
   });
 });

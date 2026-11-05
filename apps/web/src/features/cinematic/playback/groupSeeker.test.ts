@@ -371,3 +371,88 @@ describe("groupSeeker 오류와 정리", () => {
     expect(video.load).toHaveBeenCalled();
   });
 });
+
+describe("groupSeeker 메모리 사본 교체", () => {
+  function setupWithReload() {
+    const video = new FakeVideo();
+    const onBeforeReload = vi.fn();
+    const seeker = createGroupSeeker(video.asVideo(), "/media/g1.mp4", { groupId: "G1", onBeforeReload });
+    const target = (webFrame: number) => seeker.setTarget(webFrame, webFrame * 512);
+    return { video, seeker, onBeforeReload, target };
+  }
+
+  it("목표가 없는 그룹은 즉시 교체하고 seek하지 않음, 이후 목표가 오면 메타데이터 로드 후 seek", () => {
+    const { video, seeker, target } = setupWithReload();
+    video.loadMetadata();
+
+    seeker.replaceSource("blob:g1");
+
+    expect(video.src).toBe("blob:g1");
+    expect(seeker.getSnapshot().status).toBe("idle");
+    expect(video.seeks).toEqual([]);
+
+    target(120);
+    expect(seeker.getSnapshot().status).toBe("waiting_metadata");
+    video.loadMetadata();
+    video.presentFrame(frameTimeOf(120));
+    expect(seeker.getSnapshot()).toMatchObject({ status: "presented", presentedFrame: 120 });
+  });
+
+  it("표시 중인 그룹은 덮개 기회를 준 뒤 교체하고, 메타데이터 로드 후 현재 목표로 다시 seek해 표시 확인", () => {
+    const { video, seeker, onBeforeReload, target } = setupWithReload();
+    video.loadMetadata();
+    target(200);
+    video.presentFrame(frameTimeOf(200));
+
+    seeker.replaceSource("blob:g1");
+
+    expect(onBeforeReload).toHaveBeenCalledTimes(1);
+    expect(video.src).toBe("blob:g1");
+    expect(seeker.getSnapshot()).toMatchObject({ status: "waiting_metadata", presentedFrame: null });
+
+    video.loadMetadata();
+    expect(video.seeks.at(-1)).toBe(secondsOf(200));
+    video.presentFrame(frameTimeOf(200));
+    expect(seeker.getSnapshot()).toMatchObject({ status: "presented", presentedFrame: 200 });
+  });
+
+  it("진행 중 seek를 버리고, 교체 중 들어온 목표는 마지막 것만 seek", () => {
+    const { video, seeker, target } = setupWithReload();
+    video.loadMetadata();
+    target(10);
+
+    seeker.replaceSource("blob:g1");
+    target(20);
+    target(30);
+    video.loadMetadata();
+
+    expect(video.seeks).toEqual([secondsOf(10), secondsOf(30)]);
+    video.presentFrame(frameTimeOf(30));
+    expect(seeker.getSnapshot()).toMatchObject({ status: "presented", presentedFrame: 30 });
+  });
+
+  it("교체는 멈춤 횟수에 들어가지 않아 이후 멈춤도 3번째에야 오류", () => {
+    vi.useFakeTimers();
+    const { video, seeker, target } = setupWithReload();
+    video.loadMetadata();
+    target(100);
+
+    vi.advanceTimersByTime(1500);
+    video.loadMetadata();
+    seeker.replaceSource("blob:g1");
+    video.loadMetadata();
+    vi.advanceTimersByTime(1500);
+    video.loadMetadata();
+
+    expect(seeker.getSnapshot().status).toBe("seeking");
+    vi.advanceTimersByTime(1500);
+    expect(seeker.getSnapshot()).toMatchObject({ status: "error", error: { kind: "seek_timeout" } });
+  });
+
+  it("dispose 후 교체 요청은 무시", () => {
+    const { video, seeker } = setupWithReload();
+    seeker.dispose();
+    seeker.replaceSource("blob:g1");
+    expect(video.src).toBe("");
+  });
+});

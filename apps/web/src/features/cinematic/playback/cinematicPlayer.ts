@@ -29,6 +29,8 @@ export type CinematicPlayer = {
   /** 탭 복귀·bfcache 복원 시 끊긴 seek 복구 */
   resume: () => void;
   retry: () => void;
+  /** 미리 받은 메모리 사본으로 그룹 소스 교체 */
+  replaceSource: (groupIndex: number, url: string) => void;
   getSnapshot: () => PlayerSnapshot;
   dispose: () => void;
 };
@@ -36,8 +38,10 @@ export type CinematicPlayer = {
 type PlayerOptions = {
   onView: (view: PlayerView) => void;
   log?: (event: QaEventInput) => void;
-  /** 멈춤 복구로 해당 그룹 media를 다시 불러오기 직전 호출 */
+  /** 멈춤 복구·소스 교체로 해당 그룹 media를 다시 불러오기 직전 호출 */
   onBeforeReload?: (groupIndex: number) => void;
+  /** 그룹 영상을 별도로 미리 받는 중, 받기 전 그룹은 목표 그룹만 스트리밍해 대역폭 중복 방지 */
+  prefetching?: boolean;
 };
 
 const PHASE_BY_STATUS: Record<SeekerStatus, PlayerPhase> = {
@@ -52,14 +56,16 @@ const PHASE_BY_STATUS: Record<SeekerStatus, PlayerPhase> = {
 /**
  * G1~G4 video 4개의 seek 분배와 표시 그룹 결정
  *
- * 목표 그룹의 표시가 확인되기 전까지 이전 그룹 화면 유지, 목표 ±1 그룹만 preload="auto"
+ * 목표 그룹의 표시가 확인되기 전까지 이전 그룹 화면 유지
+ * preload="auto"는 메모리 사본 그룹과 목표 그룹, 미리 받기를 쓰지 않으면 목표 ±1 그룹
  */
 export function createCinematicPlayer(
   videos: HTMLVideoElement[],
   groups: CinematicTable["groups"],
-  { onView, log, onBeforeReload }: PlayerOptions,
+  { onView, log, onBeforeReload, prefetching = false }: PlayerOptions,
 ): CinematicPlayer {
   let target: FrameTarget | null = null;
+  const inMemory = groups.map(() => false);
   let view: PlayerView = { visibleGroupIndex: null, phase: "initializing", error: null };
 
   const seekers: GroupSeeker[] = groups.map((group, index) =>
@@ -108,7 +114,8 @@ export function createCinematicPlayer(
 
   function updatePreload(groupIndex: number) {
     videos.forEach((video, index) => {
-      video.preload = Math.abs(index - groupIndex) <= 1 ? "auto" : "metadata";
+      const streamed = prefetching ? index === groupIndex : Math.abs(index - groupIndex) <= 1;
+      video.preload = inMemory[index] || streamed ? "auto" : "metadata";
     });
   }
 
@@ -126,6 +133,12 @@ export function createCinematicPlayer(
       seekers.forEach((seeker) => {
         if (seeker.getSnapshot().status === "error") seeker.retry();
       });
+    },
+    replaceSource(groupIndex, url) {
+      inMemory[groupIndex] = true;
+      log?.({ type: "source_swap", group: groups[groupIndex].id, visible: view.visibleGroupIndex === groupIndex });
+      if (target) updatePreload(target.groupIndex);
+      seekers[groupIndex].replaceSource(url);
     },
     getSnapshot() {
       const video = target ? videos[target.groupIndex] : null;

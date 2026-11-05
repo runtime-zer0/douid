@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { CinematicTable, FrameTarget } from "../core/types";
 import { createCinematicPlayer, type PlayerView } from "./cinematicPlayer";
@@ -17,17 +17,18 @@ function frame(masterFrame: number): FrameTarget {
   return { masterFrame, groupIndex, webFrame, ptsTicks: webFrame * 512 };
 }
 
-function setup() {
+function setup({ prefetching = false } = {}) {
   const videos = groups.map(() => new FakeVideo());
-  videos.forEach((video) => video.loadMetadata());
   const views: PlayerView[] = [];
+  const log = vi.fn();
   const player = createCinematicPlayer(
     videos.map((video) => video.asVideo()),
     groups,
-    { onView: (view) => views.push(view) },
+    { onView: (view) => views.push(view), log, prefetching },
   );
+  videos.forEach((video) => video.loadMetadata());
   const lastView = () => views.at(-1);
-  return { videos, player, lastView };
+  return { videos, player, lastView, log };
 }
 
 describe("cinematicPlayer 그룹 전환", () => {
@@ -119,5 +120,52 @@ describe("cinematicPlayer 그룹 전환", () => {
     expect(videos[0].load).not.toHaveBeenCalled();
     expect(videos[1].load).toHaveBeenCalledTimes(1);
     expect(lastView()).toMatchObject({ visibleGroupIndex: 0, phase: "media_loading", error: null });
+  });
+});
+
+describe("cinematicPlayer 미리 받기", () => {
+  const preloads = (videos: FakeVideo[]) => videos.map((video) => video.preload);
+
+  it("미리 받기 중이면 받기 전 그룹은 목표 그룹만 스트리밍", () => {
+    const { videos, player } = setup({ prefetching: true });
+    player.setTarget(frame(500));
+    expect(preloads(videos)).toEqual(["metadata", "auto", "metadata", "metadata"]);
+  });
+
+  it("메모리 사본으로 바뀐 그룹은 목표가 아니어도 auto", () => {
+    const { videos, player } = setup({ prefetching: true });
+    player.setTarget(frame(500));
+    player.replaceSource(0, "blob:g1");
+    expect(preloads(videos)).toEqual(["auto", "auto", "metadata", "metadata"]);
+
+    player.setTarget(frame(2500));
+    expect(preloads(videos)).toEqual(["auto", "metadata", "metadata", "auto"]);
+  });
+
+  it("화면 그룹 교체는 visible로 기록하고 같은 프레임을 다시 표시 확인", () => {
+    const { videos, player, lastView, log } = setup({ prefetching: true });
+    player.setTarget(frame(100));
+    videos[0].presentFrame(frameTimeOf(100));
+
+    player.replaceSource(0, "blob:g1");
+
+    expect(log).toHaveBeenCalledWith({ type: "source_swap", group: "G1", visible: true });
+    expect(videos[0].src).toBe("blob:g1");
+    expect(lastView()?.visibleGroupIndex).toBe(0);
+    videos[0].loadMetadata();
+    expect(videos[0].seeks.at(-1)).toBe(secondsOf(100));
+    videos[0].presentFrame(frameTimeOf(100));
+    expect(lastView()).toMatchObject({ visibleGroupIndex: 0, phase: "presented" });
+  });
+
+  it("화면에 없는 그룹 교체는 visible false로 기록", () => {
+    const { videos, player, log } = setup({ prefetching: true });
+    player.setTarget(frame(100));
+    videos[0].presentFrame(frameTimeOf(100));
+
+    player.replaceSource(2, "blob:g3");
+
+    expect(log).toHaveBeenCalledWith({ type: "source_swap", group: "G3", visible: false });
+    expect(videos[2].seeks).toEqual([]);
   });
 });

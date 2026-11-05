@@ -21,6 +21,8 @@ export type GroupSeeker = {
   /** 탭 복귀 등으로 완료 신호가 끊긴 seek를 버리고 현재 목표로 다시 seek */
   resume: () => void;
   retry: () => void;
+  /** 미리 받은 메모리 사본으로 소스 교체, 현재 목표가 있으면 메타데이터 로드 후 같은 목표로 다시 seek */
+  replaceSource: (url: string) => void;
   getSnapshot: () => SeekerSnapshot;
   dispose: () => void;
 };
@@ -29,7 +31,7 @@ type SeekerOptions = {
   groupId: GroupId;
   onChange?: (snapshot: SeekerSnapshot) => void;
   log?: (event: QaEventInput) => void;
-  /** 멈춤 복구로 media를 다시 불러오기 직전 호출, 화면 프레임이 지워지기 전 보존 기회 */
+  /** 멈춤 복구·소스 교체로 media를 다시 불러오기 직전 호출, 화면 프레임이 지워지기 전 보존 기회 */
   onBeforeReload?: () => void;
 };
 
@@ -293,6 +295,21 @@ export function createGroupSeeker(
       snapshot.presentedMediaTime = null;
       snapshot.status = target ? "waiting_metadata" : "idle";
       video.load();
+      emit();
+    },
+    replaceSource(url) {
+      if (disposed) return;
+      // 멈춤 복구와 같은 흐름이지만 멈춤이 아니므로 연속 멈춤 횟수에 넣지 않음, 새 소스라 이전 오류도 초기화
+      inFlight = null;
+      clearPresentWait();
+      resumed = false;
+      if (snapshot.status === "error") consecutiveTimeouts = 0;
+      snapshot.error = null;
+      snapshot.presentedFrame = null;
+      snapshot.presentedMediaTime = null;
+      snapshot.status = target ? "waiting_metadata" : "idle";
+      onBeforeReload?.();
+      video.src = url;
       emit();
     },
     getSnapshot: () => ({ ...snapshot }),

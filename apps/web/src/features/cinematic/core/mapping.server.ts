@@ -1,6 +1,6 @@
 import "server-only";
 
-import { resolveMediaBaseUrl } from "../config/media";
+import { resolveMediaBaseUrl, resolveMediaSrc } from "../config/media";
 import mappingJson from "../config/DOUID_SCROLL_MAPPING.json";
 import manifestJson from "../config/DOUID_WEB_GROUP_MANIFEST.json";
 import type { CinematicTable, GroupId } from "./types";
@@ -125,7 +125,7 @@ export function buildCinematicTable(mapping: MappingSource, manifest: ManifestSo
     ptsTicks: points.map((point) => point.web_pts_ticks),
     groups: manifest.groups.map((group, index) => ({
       id: EXPECTED_GROUPS[index].id,
-      src: `${baseUrl}/${group.filename}`,
+      src: resolveMediaSrc(baseUrl, group.filename),
       masterStart: group.master_start_frame,
       masterEndExclusive: group.master_end_frame_exclusive,
     })),
