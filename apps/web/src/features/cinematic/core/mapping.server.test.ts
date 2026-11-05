@@ -42,9 +42,9 @@ describe("buildCinematicTable", () => {
     table.ptsTicks.forEach((ticks, i) => expect(ticks).toBe(table.webFrame[i] * 512));
   });
 
-  it("그룹 src는 base URL과 승인 파일명의 조합", () => {
+  it("그룹 src는 base URL과 운영 변형(1440p) 파일명의 조합", () => {
     expect(table.groups.map((group) => group.src)).toEqual(
-      [1, 2, 3, 4].map((n) => `${BASE_URL}/4k/DOUID_G${n}_4K_30FPS_WEB_H264.mp4`),
+      [1, 2, 3, 4].map((n) => `${BASE_URL}/1440p/DOUID_G${n}_1440P_30FPS_WEB_H264.mp4`),
     );
   });
 
