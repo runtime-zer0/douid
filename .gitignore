@@ -47,3 +47,6 @@ gradle-app.setting
 **/.playwright-mcp
 # Local cinematic media (symlink to approved web_output_v3)
 apps/web/public/media/
+
+# Phase 07 specification
+!/apps/api/specs/
