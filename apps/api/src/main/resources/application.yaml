@@ -17,4 +17,18 @@ media:
 
 app:
   security:
-    allowed-origins: http://localhost:3000
+    allowed-origins: ${APP_ALLOWED_ORIGINS:}
+  ai-chat:
+    max-request-bytes: ${AI_CHAT_MAX_REQUEST_BYTES:16384}
+    max-message-code-points: ${AI_CHAT_MAX_MESSAGE_CODE_POINTS:2000}
+    max-history-messages: ${AI_CHAT_MAX_HISTORY_MESSAGES:12}
+    max-history-message-code-points: ${AI_CHAT_MAX_HISTORY_MESSAGE_CODE_POINTS:2000}
+    max-context-code-points: ${AI_CHAT_MAX_CONTEXT_CODE_POINTS:12000}
+    rate-limit:
+      requests: ${AI_CHAT_RATE_LIMIT_REQUESTS:30}
+      window: ${AI_CHAT_RATE_LIMIT_WINDOW:60s}
+    max-concurrent-streams: ${AI_CHAT_MAX_CONCURRENT_STREAMS:8}
+    execution-timeout: ${AI_CHAT_EXECUTION_TIMEOUT:60s}
+    emitter-timeout: ${AI_CHAT_EMITTER_TIMEOUT:65s}
+    max-output-bytes: ${AI_CHAT_MAX_OUTPUT_BYTES:65536}
+    max-delta-events: ${AI_CHAT_MAX_DELTA_EVENTS:4096}

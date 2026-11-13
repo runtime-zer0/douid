@@ -68,8 +68,55 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.data.code").value("INTERNAL_ERROR"));
     }
 
+    @Test
+    void SSE_Accept에서도_잘못된_JSON은_안전한_400_JSON() throws Exception {
+        mockMvc.perform(post("/test/validation").contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.TEXT_EVENT_STREAM).content("{invalid-canary"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data.code").value("INVALID_INPUT"));
+    }
+
+    @Test
+    void 지원하지_않는_ContentType은_415_JSON() throws Exception {
+        mockMvc.perform(post("/test/json").contentType(MediaType.TEXT_PLAIN).content("secret"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.data.code").value("UNSUPPORTED_MEDIA_TYPE"));
+    }
+
+    @Test
+    void 지원하지_않는_Accept는_406_JSON() throws Exception {
+        mockMvc.perform(post("/test/json").contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_XML).content("{}"))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(jsonPath("$.data.code").value("NOT_ACCEPTABLE"));
+    }
+
+    @Test
+    void 일반_JSON_한도_가용성_시간초과_오류와_RetryAfter() throws Exception {
+        mockMvc.perform(get("/test/large").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isPayloadTooLarge()).andExpect(jsonPath("$.data.code").value("PAYLOAD_TOO_LARGE"));
+        mockMvc.perform(get("/test/rate").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isTooManyRequests()).andExpect(header().string("Retry-After","3"))
+                .andExpect(jsonPath("$.status").value("FAILURE"));
+        mockMvc.perform(get("/test/unavailable").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.status").value("ERROR"));
+        mockMvc.perform(get("/test/timeout").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isGatewayTimeout()).andExpect(jsonPath("$.status").value("ERROR"));
+        mockMvc.perform(get("/test/unknown-exception").accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isInternalServerError()).andExpect(jsonPath("$.data.code").value("INTERNAL_ERROR"));
+    }
+
     @RestController
     static class TestController {
+
+        @PostMapping(value = "/test/json", consumes = "application/json", produces = "application/json")
+        TestRequest json(@RequestBody TestRequest request) { return request; }
+
+        @GetMapping("/test/large") void large() { throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.PAYLOAD_TOO_LARGE); }
+        @GetMapping("/test/rate") void rate() { throw new TestLimitedException(); }
+        @GetMapping("/test/unavailable") void unavailable() { throw new TestUnavailableException(IntegrationErrorType.SERVICE_UNAVAILABLE); }
+        @GetMapping("/test/timeout") void timeout() { throw new TestUnavailableException(IntegrationErrorType.GATEWAY_TIMEOUT); }
 
         @GetMapping("/test/domain-exception")
         void throwDomain() {
@@ -101,6 +148,13 @@ class GlobalExceptionHandlerTest {
         TestIntegrationException() {
             super(IntegrationErrorType.BAD_GATEWAY, "TEST_EXTERNAL_FAILURE", "테스트 연동 예외");
         }
+    }
+
+    static class TestLimitedException extends DomainException {
+        TestLimitedException() { super(DomainErrorType.TOO_MANY_REQUESTS,"TEST_LIMIT","limited",3L); }
+    }
+    static class TestUnavailableException extends IntegrationException {
+        TestUnavailableException(IntegrationErrorType type) { super(type,"TEST_INTEGRATION","unavailable"); }
     }
 
     record TestRequest(@NotBlank String name) {

@@ -213,6 +213,49 @@ class SecurityConfigTest extends PostgresIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void 익명_채팅은_CSRF나_세션없이_미준비_503_JSON() throws Exception {
+        var result=mockMvc.perform(post("/api/public/ai-chat/stream")
+                        .contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM)
+                        .content("{\"message\":\"브랜드 안내\"}"))
+                .andExpect(status().isServiceUnavailable()).andReturn();
+        assertThat(result.getResponse().getContentAsString()).contains("AI_UNAVAILABLE");
+        assertThat(result.getRequest().getSession(false)).isNull();
+        assertThat(result.getResponse().getCookies()).isEmpty();
+    }
+
+    @Test
+    void Admin_세션과_과거쿠키도_공개_채팅권한_변경없음() throws Exception {
+        var session=login();
+        mockMvc.perform(post("/api/public/ai-chat/stream").session(session)
+                        .cookie(new Cookie("client_token","legacy"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"message\":\"hi\"}"))
+                .andExpect(status().isServiceUnavailable());
+        mockMvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk());
+    }
+
+    @Test
+    void 외부_error와_다른_API_ERROR_dispatch는_기본거부() throws Exception {
+        mockMvc.perform(get("/error")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/error").with(request->{
+            request.setDispatcherType(jakarta.servlet.DispatcherType.ERROR);
+            request.setAttribute(jakarta.servlet.RequestDispatcher.ERROR_REQUEST_URI,"/api/admin/works");
+            return request;
+        })).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void 내부_채팅_POST_ERROR_dispatch만_허용() throws Exception {
+        var result=mockMvc.perform(post("/error").with(csrf()).with(request->{
+            request.setServletPath("/error");
+            request.setDispatcherType(jakarta.servlet.DispatcherType.ERROR);
+            request.setAttribute(jakarta.servlet.RequestDispatcher.ERROR_REQUEST_URI,"/api/public/ai-chat/stream");
+            request.setAttribute(jakarta.servlet.RequestDispatcher.ERROR_STATUS_CODE,504);
+            return request;
+        })).andReturn();
+        assertThat(result.getResponse().getStatus()).isEqualTo(504);
+    }
+
     private MockHttpSession login() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .with(csrf())
