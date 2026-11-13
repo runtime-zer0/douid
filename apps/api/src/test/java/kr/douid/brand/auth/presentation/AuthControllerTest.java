@@ -17,7 +17,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import kr.douid.brand.auth.application.AdminResult;
 import kr.douid.brand.auth.application.AuthenticationService;
 import kr.douid.brand.auth.domain.AdminRole;
-import kr.douid.brand.client.application.ClientAuthenticationService;
 import kr.douid.brand.shared.config.SecurityConfig;
 import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
 
@@ -30,9 +29,6 @@ class AuthControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
-
-    @MockitoBean
-    private ClientAuthenticationService clientAuthenticationService;
 
     @Test
     @WithMockUser(username = "admin@douid.kr")

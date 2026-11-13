@@ -26,7 +26,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import kr.douid.brand.auth.application.AuthenticationService;
-import kr.douid.brand.client.application.ClientAuthenticationService;
 import kr.douid.brand.category.application.command.CategoryCommandService;
 import kr.douid.brand.category.application.command.CategoryResult;
 import kr.douid.brand.category.application.query.CategoryListItem;
@@ -46,9 +45,6 @@ class AdminCategoryControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
-
-    @MockitoBean
-    private ClientAuthenticationService clientAuthenticationService;
 
     @MockitoBean
     private CategoryCommandService categoryCommandService;

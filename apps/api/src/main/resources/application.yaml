@@ -18,12 +18,3 @@ media:
 app:
   security:
     allowed-origins: http://localhost:3000
-  client:
-    token-expiration-days: 180
-    email-verification:
-      code-expiration-minutes: 5
-      max-attempts: 5
-      resend-cooldown-seconds: 60
-    recovery:
-      token-expiration-minutes: 15
-      magic-link-base-url: http://localhost:3000/recovery/confirm
