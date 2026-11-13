@@ -79,4 +79,14 @@ class CsrfCookieFlowTest extends PostgresIntegrationTest {
                                 """))
                 .andExpect(status().isCreated());
     }
+    @Test
+    void 채팅_CSRF_면제는_로그인_로그아웃과_다른_POST로_확장되지_않음() throws Exception {
+        mockMvc.perform(post("/api/public/ai-chat/stream").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"message\":\"hi\"}")).andExpect(status().isServiceUnavailable());
+        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"admin@douid.kr\",\"password\":\"password\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/auth/logout")).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/public/other")).andExpect(status().isForbidden());
+    }
 }

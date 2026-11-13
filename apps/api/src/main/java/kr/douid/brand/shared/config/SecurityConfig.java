@@ -2,11 +2,16 @@ package kr.douid.brand.shared.config;
 
 import java.util.List;
 
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.RequestDispatcher;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -18,6 +23,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.HeaderWriterFilter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -115,12 +122,32 @@ public class SecurityConfig {
                 new CustomLoginFailureHandler(objectMapper));
 
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .ignoringRequestMatchers(PathPatternRequestMatcher.withDefaults()
+                                .matcher(HttpMethod.POST, "/api/public/ai-chat/stream")))
+                // 지연된 헤더 쓰기와 첫 SSE flush의 Tomcat 헤더 변경 경합 방지
+                .headers(headers -> headers.withObjectPostProcessor(new ObjectPostProcessor<HeaderWriterFilter>() {
+                    /** 보안 헤더를 downstream 비동기 쓰기 전에 고정
+                     * @param filter 보안 헤더 필터
+                     * @param <O> 필터 타입
+                     * @return 시점이 조정된 필터
+                     */
+                    @Override
+                    public <O extends HeaderWriterFilter> O postProcess(O filter) {
+                        filter.setShouldWriteHeadersEagerly(true);
+                        return filter;
+                    }
+                }))
                 .cors(Customizer.withDefaults())
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(request -> request.getDispatcherType() == DispatcherType.ERROR
+                                && "POST".equals(request.getMethod())
+                                && "/error".equals(request.getServletPath())
+                                && (request.getContextPath() + "/api/public/ai-chat/stream")
+                                        .equals(request.getAttribute(RequestDispatcher.ERROR_REQUEST_URI))).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/media/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()

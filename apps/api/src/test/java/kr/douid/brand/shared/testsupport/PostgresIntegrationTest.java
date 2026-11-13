@@ -1,5 +1,6 @@
 package kr.douid.brand.shared.testsupport;
 
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -13,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Hibernate가 스키마를 자체 생성하지 않으므로, 실제 애플리케이션 기동 시와 동일한 스키마로 테스트한다.
  */
 @Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class PostgresIntegrationTest {
 
     @Container
