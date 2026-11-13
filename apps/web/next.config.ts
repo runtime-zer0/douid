@@ -6,6 +6,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  async rewrites() {
+    const apiOrigin = process.env.API_ORIGIN;
+    // 브라우저는 같은 Origin `/api`만 호출, 세션·CSRF 쿠키를 first-party로 유지
+    return apiOrigin ? [{ source: "/api/:path*", destination: `${apiOrigin}/api/:path*` }] : [];
+  },
 };
 
 export default nextConfig;
