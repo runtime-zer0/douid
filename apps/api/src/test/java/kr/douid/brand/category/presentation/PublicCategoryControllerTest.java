@@ -16,7 +16,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import kr.douid.brand.auth.application.AuthenticationService;
 import kr.douid.brand.category.application.query.CategoryListItem;
-import kr.douid.brand.client.application.ClientAuthenticationService;
 import kr.douid.brand.category.application.query.CategoryQueryService;
 import kr.douid.brand.shared.config.SecurityConfig;
 import kr.douid.brand.shared.presentation.GlobalExceptionHandler;
@@ -30,9 +29,6 @@ class PublicCategoryControllerTest {
 
     @MockitoBean
     private AuthenticationService authenticationService;
-
-    @MockitoBean
-    private ClientAuthenticationService clientAuthenticationService;
 
     @MockitoBean
     private CategoryQueryService categoryQueryService;

@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -21,6 +23,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import jakarta.servlet.http.Cookie;
 import kr.douid.brand.auth.domain.Admin;
 import kr.douid.brand.auth.domain.AdminRepository;
 import kr.douid.brand.auth.domain.AdminRole;
@@ -179,6 +182,34 @@ class SecurityConfigTest extends PostgresIntegrationTest {
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/auth/me").session(session))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/api/client/conversations",
+            "/api/client/conversations/00000000-0000-0000-0000-000000000001",
+            "/api/client/conversations/00000000-0000-0000-0000-000000000001/messages",
+            "/api/client/emails",
+            "/api/client/emails/verify",
+            "/api/client/recovery/request",
+            "/api/client/recovery/confirm"
+    })
+    @WithMockUser(roles = "ADMIN")
+    void 폐기된_Client_API는_Admin과_기존_쿠키로도_접근_불가(String path) throws Exception {
+        mockMvc.perform(get(path).cookie(new Cookie("client_token", "legacy-token")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(path).with(csrf())
+                        .cookie(new Cookie("client_token", "legacy-token"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void 기존_Client_쿠키로_Admin_API_인증_불가() throws Exception {
+        mockMvc.perform(get("/api/admin/categories")
+                        .cookie(new Cookie("client_token", "legacy-token")))
                 .andExpect(status().isUnauthorized());
     }
 
