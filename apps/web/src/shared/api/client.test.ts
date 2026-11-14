@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { server } from "@/test/msw/server";
 
-import { ApiError, apiRequest, clearCsrfToken } from "./client";
+import { ApiError, apiRequest, clearCsrfToken, toApiError } from "./client";
 
 const CSRF = { headerName: "X-XSRF-TOKEN", token: "masked-1" };
 
@@ -179,5 +179,42 @@ describe("apiRequest", () => {
     await apiRequest("/api/x", { method: "POST", formData });
 
     expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
+  });
+});
+
+describe("toApiError", () => {
+  const envelope = (status: number, body: object) => HttpResponse.json(body, { status });
+
+  it("400 FAILURE 봉투는 code·fields 보존", async () => {
+    const error = await toApiError(
+      envelope(400, { status: "FAILURE", data: { code: "INVALID_INPUT", message: "bad", fields: [{ field: "message", message: "필수" }] } }),
+    );
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.failure).toEqual({
+      kind: "http",
+      status: 400,
+      code: "INVALID_INPUT",
+      message: "bad",
+      fields: [{ field: "message", message: "필수" }],
+    });
+  });
+
+  it("503 ERROR 봉투는 code 보존", async () => {
+    const error = await toApiError(envelope(503, { status: "ERROR", data: { code: "AI_UNAVAILABLE", message: "x" } }));
+
+    expect(error.failure).toMatchObject({ kind: "http", status: 503, code: "AI_UNAVAILABLE" });
+  });
+
+  it("HTML 404는 code null", async () => {
+    const error = await toApiError(new HttpResponse("<html>404</html>", { status: 404, headers: { "Content-Type": "text/html" } }));
+
+    expect(error.failure).toEqual({ kind: "http", status: 404, code: null, message: null, fields: [] });
+  });
+
+  it("JSON 파싱 실패는 code null", async () => {
+    const error = await toApiError(new HttpResponse("{broken", { status: 500, headers: { "Content-Type": "application/json" } }));
+
+    expect(error.failure).toMatchObject({ kind: "http", status: 500, code: null });
   });
 });
