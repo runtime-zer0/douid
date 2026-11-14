@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Import;
 import kr.douid.brand.ai.testsupport.*;
 import kr.douid.brand.shared.testsupport.PostgresIntegrationTest;
 
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT,properties="app.ai-chat.rate-limit.requests=200")
 @Import(AiChatTestConfiguration.class)
 class AiChatStreamingIntegrationTest extends PostgresIntegrationTest {
     @LocalServerPort int port;

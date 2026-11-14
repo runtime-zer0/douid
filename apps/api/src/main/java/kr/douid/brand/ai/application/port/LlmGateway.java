@@ -12,7 +12,7 @@ public interface LlmGateway {
     LlmStream prepare(AiChatCommand command);
 
     interface LlmStream extends AutoCloseable {
-        /** 단일 스레드에서 순차 Delta 생성
+        /** 단일 스레드의 순차 Delta 생성, 명시적 정상 완료와 유효 텍스트 확인 후에만 정상 반환
          * @param delta 순차 텍스트 소비자
          * @throws Exception 실행 실패
          */

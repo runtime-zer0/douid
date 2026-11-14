@@ -16,6 +16,24 @@ class AiChatConfigurationTest {
             .withUserConfiguration(AiChatConfig.class,Origins.class);
     @Configuration(proxyBeanMethods=false) @EnableConfigurationProperties(CorsProperties.class)
     static class Origins {}
+    @Test void 명시적_가짜설정만으로_adapter를_선택하며_시작시_네트워크접근_없음() {
+        runner.withPropertyValues("app.ai-chat.openai.enabled=true", "app.ai-chat.openai.api-key=FAKE_KEY_CANARY")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(LlmGateway.class)).isInstanceOf(
+                            kr.douid.brand.ai.infrastructure.openai.OpenAiResponsesGateway.class);
+                    var client=context.getBean("openAiHttpClient", java.net.http.HttpClient.class);
+                    assertThat(client.followRedirects()).isEqualTo(java.net.http.HttpClient.Redirect.NEVER);
+                });
+    }
+    @Test void 활성화했어도_빈Key면_AI만_미준비() {
+        runner.withPropertyValues("app.ai-chat.openai.enabled=true", "app.ai-chat.openai.api-key=")
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(LlmGateway.class)).isInstanceOf(UnavailableLlmGateway.class);
+                    assertThat(context.getBean(AiChatPolicy.class)).isNotNull();
+                });
+    }
     @Test void 서로다른_두환경_정책과_Origin에도_운영_default는_가짜답변없이_503() {
         for(int i:new int[]{1,2}) runner.withPropertyValues("app.security.allowed-origins=https://site"+i+".example",
                 "app.ai-chat.max-message-code-points="+(100*i),"app.ai-chat.rate-limit.requests="+i,
