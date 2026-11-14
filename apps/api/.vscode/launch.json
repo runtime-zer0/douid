@@ -8,7 +8,7 @@
       "mainClass": "kr.douid.brand.DouidBrandApiApplication",
       "cwd": "${workspaceFolder}",
       "envFile": "${userHome}/.config/douid/api-local.env",
-      "console": "integratedTerminal"
+      "console": "internalConsole"
     }
   ]
 }
