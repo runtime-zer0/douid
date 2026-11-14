@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "DOUID API - Local",
+      "mainClass": "kr.douid.brand.DouidBrandApiApplication",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${userHome}/.config/douid/api-local.env",
+      "console": "integratedTerminal"
+    }
+  ]
+}
