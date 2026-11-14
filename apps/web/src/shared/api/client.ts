@@ -78,12 +78,20 @@ async function send<T>(path: string, { method = "GET", json, formData, signal }:
     throw new ApiError({ kind: "network" });
   }
 
-  const body = (await readBody(response)) as { data?: unknown } | undefined;
-  if (response.ok) return (body?.data ?? null) as T;
+  if (response.ok) {
+    const body = (await readBody(response)) as { data?: unknown } | undefined;
+    return (body?.data ?? null) as T;
+  }
 
   if (response.status === 401 || response.status === 403) clearCsrfToken();
+  throw await toApiError(response);
+}
+
+/** 실패 응답의 봉투 해석, JSON이 아니거나 `data.code`가 없으면 `code: null` */
+export async function toApiError(response: Response): Promise<ApiError> {
+  const body = (await readBody(response)) as { data?: unknown } | undefined;
   const error = body?.data as { code?: unknown; message?: unknown; fields?: unknown } | undefined;
-  throw new ApiError({
+  return new ApiError({
     kind: "http",
     status: response.status,
     code: typeof error?.code === "string" ? error.code : null,
