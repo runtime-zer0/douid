@@ -38,6 +38,32 @@ class AiChatStatelessIntegrationTest extends PostgresIntegrationTest {
         TABLES.forEach(table->result.put(table,jdbc.queryForObject("select count(*) from "+table,Long.class)));
         return result;
     }
+    @Test void 실제adapter_대역의_정상과_실패에도_채팅_DML과_행수변경_없음() throws Exception {
+        var before=counts();writes.set(0);
+        try(var stub=new OpenAiStubServer();var client=HttpClient.newHttpClient();
+            var executor=new kr.douid.brand.ai.infrastructure.stream.BoundedChatStreamExecutor(2)) {
+            var properties=new kr.douid.brand.ai.infrastructure.config.OpenAiProperties();
+            properties.setEnabled(true);properties.setApiKey("FAKE_KEY_CANARY");
+            var adapter=kr.douid.brand.ai.infrastructure.openai.OpenAiResponsesGateway.forLoopbackTest(properties,client,executor,
+                    new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),stub.endpoint());
+            var policy=Policies.defaults();
+            var mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new AiChatController(
+                    new kr.douid.brand.ai.application.AiChatUseCase(adapter,
+                            new kr.douid.brand.ai.infrastructure.guard.InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+                    .addInterceptors(new kr.douid.brand.ai.presentation.stream.AiChatAsyncInterceptor()).build();
+            for(boolean fail:new boolean[]{false,true}) {
+                stub.generation=e->OpenAiStubServer.reply(e,fail?500:200,fail?"application/json":"text/event-stream",
+                        fail?"PRIVATE_ERROR":OpenAiStubServer.success("ephemeral-answer"));
+                var result=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/public/ai-chat/stream")
+                        .contentType("application/json").content("{\"message\":\"ephemeral-question\"}")).andReturn();
+                result.getAsyncResult(5000);
+                String body=mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch(result))
+                        .andReturn().getResponse().getContentAsString();
+                assertThat(body).contains(fail?"event:error":"event:completed");
+            }
+        }
+        assertThat(counts()).isEqualTo(before);assertThat(writes.get()).isZero();
+    }
     @Test void 정상과_실패_요청의_행수불변과_대상_DML실행_0회() throws Exception {
         var before=counts();writes.set(0);
         try(var client=HttpClient.newHttpClient()) {

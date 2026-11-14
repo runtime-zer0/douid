@@ -16,8 +16,8 @@ class AiChatPropertiesTest {
         runner.run(context -> {
             var p = context.getBean(AiChatProperties.class);
             assertThat(p.maxRequestBytes()).isEqualTo(16384);
-            assertThat(p.rateLimit().requests()).isEqualTo(30);
-            assertThat(p.maxConcurrentStreams()).isEqualTo(8);
+            assertThat(p.rateLimit().requests()).isEqualTo(10);
+            assertThat(p.maxConcurrentStreams()).isEqualTo(2);
         });
         runner.withPropertyValues("app.ai-chat.max-request-bytes=512", "app.ai-chat.rate-limit.requests=2")
                 .run(context -> {

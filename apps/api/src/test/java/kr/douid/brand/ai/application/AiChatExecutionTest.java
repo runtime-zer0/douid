@@ -24,6 +24,17 @@ class AiChatExecutionTest {
         var useCase=new AiChatUseCase(gateway,guard,policy,executor);
         return useCase.start(useCase.prepare(new AiChatCommand("hi",List.of())),sink,e->{});
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"READ_IDLE_TIMEOUT,TIMED_OUT", "COUNT_TIMEOUT,TIMED_OUT",
+            "INPUT_BUDGET_EXCEEDED,LIMIT_EXCEEDED", "PROVIDER_RESOURCE_LIMIT,LIMIT_EXCEEDED",
+            "AUTHENTICATION,FAILED", "INCOMPLETE_OTHER,FAILED"})
+    void 공급자_중립오류를_기존종료사유로_변환(String kind, String expected) throws Exception {
+        gateway.behavior=(stream,delta)->{delta.accept("partial");throw new LlmIntegrationException(LlmIntegrationException.Kind.valueOf(kind));};
+        var execution=start(defaults);execution.activate();
+        assertThat(gateway.last.closed.await(3,TimeUnit.SECONDS)).isTrue();
+        verify(sink).delta("partial");verify(sink).failed(StopReason.valueOf(expected));verify(sink,never()).completed();
+        execution.transportCompleted();verify(lease,timeout(3000).times(1)).close();
+    }
     @Test void worker_종료후에도_최종_연결종료까지_점유_유지() throws Exception {
         var execution=start(defaults);execution.activate();
         assertThat(gateway.last.closed.await(3,TimeUnit.SECONDS)).isTrue();

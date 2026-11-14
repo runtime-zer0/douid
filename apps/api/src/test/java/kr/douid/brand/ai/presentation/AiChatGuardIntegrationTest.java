@@ -27,12 +27,12 @@ class AiChatGuardIntegrationTest extends PostgresIntegrationTest {
                 .timeout(Duration.ofSeconds(5)).POST(HttpRequest.BodyPublishers.ofString(body)).build();
     }
     @Test @Timeout(20)
-    void 실제_8개_연결_상한과_요청실패_집계_재디스패치_미중복() throws Exception {
+    void 실제_2개_연결_상한과_요청실패_집계_재디스패치_미중복() throws Exception {
         gateway.behavior=(s,d)->{d.accept("open");s.awaitRelease();};
         List<InputStream> opened=new ArrayList<>();
         try(var client=HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).build()) {
           try {
-            for(int i=0;i<8;i++) {
+            for(int i=0;i<2;i++) {
                 var response=client.send(request("{\"message\":\"hi\"}"),HttpResponse.BodyHandlers.ofInputStream());
                 assertThat(response.statusCode()).isEqualTo(200);opened.add(response.body());
                 assertThat(response.body().readNBytes(10)).isNotEmpty();
@@ -42,8 +42,8 @@ class AiChatGuardIntegrationTest extends PostgresIntegrationTest {
             assertThat(busy.headers().firstValue("Retry-After")).contains("1");
             gateway.streams.forEach(s->s.release.countDown());
             for(var input:opened){assertThat(new String(input.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8)).contains("event:completed");input.close();}
-            // 정상 8회와 busy 1회도 소비되며 ASYNC 종료는 중복 집계하지 않음
-            for(int i=0;i<21;i++) {
+            // 정상 2회와 busy 1회도 소비되며 ASYNC 종료는 중복 집계하지 않음
+            for(int i=0;i<7;i++) {
                 var invalid=client.send(request("{}"),HttpResponse.BodyHandlers.ofString());
                 assertThat(invalid.statusCode()).isEqualTo(400);
             }

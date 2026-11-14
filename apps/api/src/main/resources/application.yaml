@@ -2,6 +2,11 @@ spring:
   application:
     name: douid-brand-api
 
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
   jackson:
     time-zone: UTC
 
@@ -17,7 +22,7 @@ media:
 
 app:
   security:
-    allowed-origins: ${APP_ALLOWED_ORIGINS:}
+    allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:3100}
   ai-chat:
     max-request-bytes: ${AI_CHAT_MAX_REQUEST_BYTES:16384}
     max-message-code-points: ${AI_CHAT_MAX_MESSAGE_CODE_POINTS:2000}
@@ -25,10 +30,25 @@ app:
     max-history-message-code-points: ${AI_CHAT_MAX_HISTORY_MESSAGE_CODE_POINTS:2000}
     max-context-code-points: ${AI_CHAT_MAX_CONTEXT_CODE_POINTS:12000}
     rate-limit:
-      requests: ${AI_CHAT_RATE_LIMIT_REQUESTS:30}
+      requests: ${AI_CHAT_RATE_LIMIT_REQUESTS:10}
       window: ${AI_CHAT_RATE_LIMIT_WINDOW:60s}
-    max-concurrent-streams: ${AI_CHAT_MAX_CONCURRENT_STREAMS:8}
+    max-concurrent-streams: ${AI_CHAT_MAX_CONCURRENT_STREAMS:2}
     execution-timeout: ${AI_CHAT_EXECUTION_TIMEOUT:60s}
     emitter-timeout: ${AI_CHAT_EMITTER_TIMEOUT:65s}
     max-output-bytes: ${AI_CHAT_MAX_OUTPUT_BYTES:65536}
     max-delta-events: ${AI_CHAT_MAX_DELTA_EVENTS:4096}
+    openai:
+      enabled: ${AI_CHAT_OPENAI_ENABLED}
+      api-key: ${OPENAI_API_KEY}
+      model: ${AI_CHAT_OPENAI_MODEL:gpt-6-luna}
+      max-input-tokens: ${AI_CHAT_OPENAI_MAX_INPUT_TOKENS:8192}
+      max-output-tokens: ${AI_CHAT_OPENAI_MAX_OUTPUT_TOKENS:1024}
+      connect-timeout: ${AI_CHAT_OPENAI_CONNECT_TIMEOUT:10s}
+      response-header-timeout: ${AI_CHAT_OPENAI_RESPONSE_HEADER_TIMEOUT:10s}
+      count-timeout: ${AI_CHAT_OPENAI_COUNT_TIMEOUT:10s}
+      read-idle-timeout: ${AI_CHAT_OPENAI_READ_IDLE_TIMEOUT:15s}
+      max-provider-body-bytes: ${AI_CHAT_OPENAI_MAX_PROVIDER_BODY_BYTES:2097152}
+      max-provider-event-bytes: ${AI_CHAT_OPENAI_MAX_PROVIDER_EVENT_BYTES:131072}
+      max-count-body-bytes: ${AI_CHAT_OPENAI_MAX_COUNT_BODY_BYTES:4096}
+      max-provider-request-bytes: ${AI_CHAT_OPENAI_MAX_PROVIDER_REQUEST_BYTES:32768}
+      kakao-channel-url: ${AI_CHAT_KAKAO_CHANNEL_URL:}

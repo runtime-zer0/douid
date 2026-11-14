@@ -15,7 +15,7 @@ public record AiChatProperties(
         @DefaultValue("2000") int maxHistoryMessageCodePoints,
         @DefaultValue("12000") int maxContextCodePoints,
         @DefaultValue RateLimit rateLimit,
-        @DefaultValue("8") int maxConcurrentStreams,
+        @DefaultValue("2") int maxConcurrentStreams,
         @DefaultValue("60s") Duration executionTimeout,
         @DefaultValue("65s") Duration emitterTimeout,
         @DefaultValue("65536") long maxOutputBytes,
@@ -69,5 +69,5 @@ public record AiChatProperties(
                 executionTimeout, emitterTimeout, maxOutputBytes, maxDeltaEvents);
     }
 
-    public record RateLimit(@DefaultValue("30") int requests, @DefaultValue("60s") Duration window) {}
+    public record RateLimit(@DefaultValue("10") int requests, @DefaultValue("60s") Duration window) {}
 }

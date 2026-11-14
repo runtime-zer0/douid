@@ -99,6 +99,12 @@ public final class AiChatExecution {
             stop(StopReason.LIMIT_EXCEEDED);
         } catch (StreamSink.Disconnected e) {
             deliveryFailed.set(true); transportFailed = true; stop(StopReason.DISCONNECTED);
+        } catch (LlmIntegrationException e) {
+            stop(switch (e.kind()) {
+                case CONNECT_TIMEOUT, HEADER_TIMEOUT, COUNT_TIMEOUT, READ_IDLE_TIMEOUT -> StopReason.TIMED_OUT;
+                case INPUT_BUDGET_EXCEEDED, PROVIDER_RESOURCE_LIMIT -> StopReason.LIMIT_EXCEEDED;
+                default -> StopReason.FAILED;
+            });
         } catch (Exception e) {
             stop(StopReason.FAILED);
         } finally {

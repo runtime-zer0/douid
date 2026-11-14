@@ -70,6 +70,9 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+    // 일반 테스트에서 로컬 환경의 Provider 활성화·credential을 상속하지 않음
+    systemProperty 'app.ai-chat.openai.enabled', 'false'
+    systemProperty 'app.ai-chat.openai.api-key', ''
 }
 
 // testcontainers 1.21.4가 자체 pom에서 docker-java 3.4.2를 명시 고정하는데,
