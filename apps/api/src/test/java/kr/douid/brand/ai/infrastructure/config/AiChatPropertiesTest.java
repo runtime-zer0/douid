@@ -16,6 +16,10 @@ class AiChatPropertiesTest {
         runner.run(context -> {
             var p = context.getBean(AiChatProperties.class);
             assertThat(p.maxRequestBytes()).isEqualTo(16384);
+            assertThat(p.maxHistoryMessages()).isEqualTo(64);
+            assertThat(p.maxMessageCodePoints()).isEqualTo(2000);
+            assertThat(p.maxHistoryMessageCodePoints()).isEqualTo(2000);
+            assertThat(p.maxContextCodePoints()).isEqualTo(12000);
             assertThat(p.rateLimit().requests()).isEqualTo(10);
             assertThat(p.maxConcurrentStreams()).isEqualTo(2);
         });

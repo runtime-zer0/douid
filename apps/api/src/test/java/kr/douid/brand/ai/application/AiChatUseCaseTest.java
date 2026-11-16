@@ -58,9 +58,9 @@ class AiChatUseCaseTest {
     @Test void 이력_개별_개수_누적_경계와_null_거부() {
         var source=mock(LlmGateway.LlmStream.class);when(gateway.prepare(any())).thenReturn(source);
         when(guard.acquire()).thenReturn(mock(ChatRequestGuard.Lease.class));
-        for(int n:new int[]{11,12}) useCase.prepare(new AiChatCommand("hi",java.util.Collections.nCopies(n,
+        for(int n:new int[]{63,64}) useCase.prepare(new AiChatCommand("hi",java.util.Collections.nCopies(n,
                 new AiChatCommand.HistoryMessage("user","a")))).close();
-        assertThatThrownBy(() -> useCase.prepare(new AiChatCommand("hi",java.util.Collections.nCopies(13,
+        assertThatThrownBy(() -> useCase.prepare(new AiChatCommand("hi",java.util.Collections.nCopies(65,
                 new AiChatCommand.HistoryMessage("user","a"))))).isInstanceOf(AiChatException.class);
         for(int n:new int[]{1999,2000})useCase.prepare(new AiChatCommand("hi",List.of(
                 new AiChatCommand.HistoryMessage("assistant","한".repeat(n))))).close();

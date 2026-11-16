@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 public record AiChatProperties(
         @DefaultValue("16384") int maxRequestBytes,
         @DefaultValue("2000") int maxMessageCodePoints,
-        @DefaultValue("12") int maxHistoryMessages,
+        @DefaultValue("64") int maxHistoryMessages,
         @DefaultValue("2000") int maxHistoryMessageCodePoints,
         @DefaultValue("12000") int maxContextCodePoints,
         @DefaultValue RateLimit rateLimit,

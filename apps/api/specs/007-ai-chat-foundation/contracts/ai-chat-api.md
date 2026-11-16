@@ -51,7 +51,7 @@ app.ai-chat 아래 kebab-case 설정을 바인딩한다. 기본값은 초기 단
 | --- | --- | --- | --- |
 | max-request-bytes | 16384 | AI_CHAT_MAX_REQUEST_BYTES | 수신 JSON byte, 정확 한도 허용, +1 byte로 초과 판정 |
 | max-message-code-points | 2000 | AI_CHAT_MAX_MESSAGE_CODE_POINTS | 현재 질문 Unicode code points |
-| max-history-messages | 12 | AI_CHAT_MAX_HISTORY_MESSAGES | 이력 항목 수, 빈 이력은 항상 허용 |
+| max-history-messages | 64 | AI_CHAT_MAX_HISTORY_MESSAGES | 이력 항목 수, 빈 이력은 항상 허용 |
 | max-history-message-code-points | 2000 | AI_CHAT_MAX_HISTORY_MESSAGE_CODE_POINTS | 개별 content code points |
 | max-context-code-points | 12000 | AI_CHAT_MAX_CONTEXT_CODE_POINTS | 질문+모든 content의 합, role/JSON syntax 제외 |
 | rate-limit.requests | 30 | AI_CHAT_RATE_LIMIT_REQUESTS | 프로세스 전체 controller 진입 시도 수 |
