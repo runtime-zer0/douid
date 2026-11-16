@@ -26,7 +26,7 @@ app:
   ai-chat:
     max-request-bytes: ${AI_CHAT_MAX_REQUEST_BYTES:16384}
     max-message-code-points: ${AI_CHAT_MAX_MESSAGE_CODE_POINTS:2000}
-    max-history-messages: ${AI_CHAT_MAX_HISTORY_MESSAGES:12}
+    max-history-messages: ${AI_CHAT_MAX_HISTORY_MESSAGES:64}
     max-history-message-code-points: ${AI_CHAT_MAX_HISTORY_MESSAGE_CODE_POINTS:2000}
     max-context-code-points: ${AI_CHAT_MAX_CONTEXT_CODE_POINTS:12000}
     rate-limit:

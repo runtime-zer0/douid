@@ -7,7 +7,7 @@ public final class Policies {
      * @return 테스트 기본 제한
      */
     public static AiChatPolicy defaults() {
-        return new AiChatPolicy(16384, 2000, 12, 2000, 12000, 10, Duration.ofSeconds(60), 2,
+        return new AiChatPolicy(16384, 2000, 64, 2000, 12000, 10, Duration.ofSeconds(60), 2,
                 Duration.ofSeconds(60), Duration.ofSeconds(65), 65536, 4096);
     }
 }
