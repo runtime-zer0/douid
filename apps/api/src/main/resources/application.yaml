@@ -23,6 +23,8 @@ media:
 app:
   security:
     allowed-origins: ${APP_ALLOWED_ORIGINS:http://localhost:3100}
+  work-search:
+    max-results: ${WORK_SEARCH_MAX_RESULTS:5}
   ai-chat:
     max-request-bytes: ${AI_CHAT_MAX_REQUEST_BYTES:16384}
     max-message-code-points: ${AI_CHAT_MAX_MESSAGE_CODE_POINTS:2000}
