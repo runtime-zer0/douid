@@ -27,7 +27,29 @@ public final class OpenAiRequestComposer {
 
     record Requests(byte[] count, byte[] generation) {}
 
-    Requests compose(AiChatCommand command) {
+    /** prepare 시점 설정·입력 snapshot, run에서 맥락 블록만 결합 */
+    static final class Draft {
+        private final ObjectNode common;
+        private final int maxOutputTokens;
+        private final int maxRequestBytes;
+
+        private Draft(ObjectNode common, int maxOutputTokens, int maxRequestBytes) {
+            this.common = common; this.maxOutputTokens = maxOutputTokens; this.maxRequestBytes = maxRequestBytes;
+        }
+
+        Requests with(String block) {
+            ObjectNode body = common.deepCopy();
+            if (!block.isEmpty()) body.put("instructions", body.get("instructions").asString() + "\n\n" + block);
+            byte[] count = OpenAiEventReader.JSON.writeValueAsBytes(body);
+            body.put("stream", true).put("store", false).put("max_output_tokens", maxOutputTokens);
+            byte[] generation = OpenAiEventReader.JSON.writeValueAsBytes(body);
+            if (count.length > maxRequestBytes || generation.length > maxRequestBytes)
+                throw new LlmIntegrationException(PROVIDER_RESOURCE_LIMIT);
+            return new Requests(count, generation);
+        }
+    }
+
+    Draft compose(AiChatCommand command) {
         ObjectNode common = OpenAiEventReader.JSON.createObjectNode();
         common.put("model", properties.getModel());
         String url = properties.getKakaoChannelUrl();
@@ -43,11 +65,10 @@ public final class OpenAiRequestComposer {
         common.putArray("tools");
         common.put("tool_choice", "none");
         common.put("truncation", "disabled");
-        byte[] count = OpenAiEventReader.JSON.writeValueAsBytes(common);
-        common.put("stream", true).put("store", false).put("max_output_tokens", properties.getMaxOutputTokens());
-        byte[] generation = OpenAiEventReader.JSON.writeValueAsBytes(common);
-        if (count.length > properties.getMaxProviderRequestBytes() || generation.length > properties.getMaxProviderRequestBytes())
-            throw new LlmIntegrationException(PROVIDER_RESOURCE_LIMIT);
-        return new Requests(count, generation);
+        var draft = new Draft(common, properties.getMaxOutputTokens(), properties.getMaxProviderRequestBytes());
+        draft.with("");
+        return draft;
     }
+
+    Requests compose(AiChatCommand command, String block) { return compose(command).with(block); }
 }

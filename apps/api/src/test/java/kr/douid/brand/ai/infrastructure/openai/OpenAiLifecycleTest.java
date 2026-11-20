@@ -1,5 +1,7 @@
 package kr.douid.brand.ai.infrastructure.openai;
 
+import kr.douid.brand.ai.application.PortfolioContext;
+
 import static org.assertj.core.api.Assertions.*;
 import java.time.Duration;
 import java.util.concurrent.*;
@@ -16,7 +18,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
     @Test void 느린_소비자도_관측유휴_기한에_포함() throws Exception {
         properties.setReadIdleTimeout(Duration.ofMillis(100));
         try(var source=source()) {
-            assertThatThrownBy(()->source.run(s->{
+            assertThatThrownBy(()->source.run(PortfolioContext.noTerms(),s->{
                 try {new CountDownLatch(1).await();}catch(InterruptedException e){throw new IllegalStateException();}
             })).isInstanceOfSatisfying(LlmIntegrationException.class,e->assertThat(e.kind()).isEqualTo(READ_IDLE_TIMEOUT));
         }finally{Thread.interrupted();}
@@ -31,7 +33,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
         }).when(observed).schedule(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.any());
         var adapter=OpenAiResponsesGateway.forLoopbackTest(properties,client,observed,metrics,stub.endpoint());
         try(var source=adapter.prepare(new kr.douid.brand.ai.application.AiChatCommand("hello",java.util.List.of()))) {
-            source.run(s->{});
+            source.run(PortfolioContext.noTerms(),s->{});
             assertThat(scheduled).hasSize(3).allMatch(Future::isCancelled);
             callbacks.forEach(Runnable::run);
             assertThat(Thread.currentThread().isInterrupted()).isFalse();
@@ -39,7 +41,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
     }
     @Test void 실행전_취소와_중복close는_외부호출하지않음() throws Exception {
         var source = source(); source.cancel(); source.cancel(); source.close(); source.close();
-        assertThatThrownBy(() -> source.run(s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
+        assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
                 e -> assertThat(e.kind()).isEqualTo(CLIENT_CANCELLED));
         assertThat(stub.countRequests).isEmpty(); assertThat(stub.generationRequests).isEmpty();
     }
@@ -51,7 +53,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
             e.getResponseBody().write('{'); e.getResponseBody().flush(); release.await();
         };
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
                     e -> assertThat(e.kind()).isEqualTo(COUNT_TIMEOUT));
         } finally { Thread.interrupted(); release.countDown(); }
         assertThat(stub.generationRequests).isEmpty();
@@ -69,7 +71,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
             release.await();
         };
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
                     e -> assertThat(e.kind()).isEqualTo(headers ? HEADER_TIMEOUT : READ_IDLE_TIMEOUT));
         } finally { Thread.interrupted(); release.countDown(); }
     }
@@ -80,7 +82,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
             e.getResponseBody().write(": start\n\n".getBytes()); e.getResponseBody().flush(); entered.countDown(); release.await();
         };
         try (var source = source(); var threads = Executors.newSingleThreadExecutor()) {
-            var result = threads.submit(() -> { source.run(s -> {}); return null; });
+            var result = threads.submit(() -> { source.run(PortfolioContext.noTerms(),s -> {}); return null; });
             assertThat(entered.await(3, TimeUnit.SECONDS)).isTrue();
             source.cancel(); source.cancel();
             assertThatThrownBy(() -> result.get(3, TimeUnit.SECONDS)).isInstanceOf(ExecutionException.class);
@@ -95,7 +97,7 @@ class OpenAiLifecycleTest extends OpenAiTestSupport {
         };
         try (var source = source()) {
             ref.set(source);
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOf(LlmIntegrationException.class);
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOf(LlmIntegrationException.class);
         } finally { Thread.interrupted(); }
         assertThat(stub.generationRequests).isEmpty();
     }

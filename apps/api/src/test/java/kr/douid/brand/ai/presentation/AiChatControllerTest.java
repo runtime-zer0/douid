@@ -23,6 +23,8 @@ class AiChatControllerTest {
     @Autowired MockMvc mvc;
     @Autowired ControlledLlmGateway gateway;
     @MockitoBean AuthenticationService auth;
+    @MockitoBean kr.douid.brand.work.application.port.PublicWorkSearch search;
+    @MockitoBean kr.douid.brand.work.application.port.PublicWorkSearchTerms terms;
     @BeforeEach void reset() {gateway.behavior=(stream,delta)->{};}
     MvcResult startRequest() throws Exception {
         return mvc.perform(post("/api/public/ai-chat/stream").contentType(MediaType.APPLICATION_JSON)

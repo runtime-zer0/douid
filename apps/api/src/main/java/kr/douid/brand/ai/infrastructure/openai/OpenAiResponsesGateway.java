@@ -75,7 +75,7 @@ public final class OpenAiResponsesGateway implements LlmGateway {
     }
 
     private final class Source implements LlmStream {
-        private final OpenAiRequestComposer.Requests requests;
+        private final OpenAiRequestComposer.Draft draft;
         private final AtomicBoolean run = new AtomicBoolean();
         private final AtomicBoolean cancelled = new AtomicBoolean();
         private final AtomicBoolean closed = new AtomicBoolean();
@@ -88,13 +88,14 @@ public final class OpenAiResponsesGateway implements LlmGateway {
         private String stage = "count";
         private OpenAiEventReader reader;
 
-        Source(OpenAiRequestComposer.Requests requests) { this.requests = requests; }
+        Source(OpenAiRequestComposer.Draft draft) { this.draft = draft; }
 
         /** 단일 worker의 Count 검증과 순차 생성
+         * @param context Count·생성에 같게 넣을 서버 맥락
          * @param delta 기존 순차 텍스트 소비자
          * @throws Exception 취소·제공자·소비자 실패
          */
-        @Override public void run(Consumer<String> delta) throws Exception {
+        @Override public void run(PortfolioContext context, Consumer<String> delta) throws Exception {
             if (!run.compareAndSet(false, true)) throw new IllegalStateException("Stream already run");
             worker = Thread.currentThread();
             Kind failure = null;
@@ -102,6 +103,7 @@ public final class OpenAiResponsesGateway implements LlmGateway {
             long started = System.nanoTime();
             try {
                 checkCancelled();
+                var requests = draft.with(context.block());
                 arm(properties.getCountTimeout(), () -> expire(COUNT_TIMEOUT));
                 try (var body = send(URI.create(endpoint + "/input_tokens"), requests.count(),
                         properties.getCountTimeout(), properties.getMaxCountBodyBytes(), "application/json")) {

@@ -18,6 +18,8 @@ import kr.douid.brand.shared.config.SecurityConfig;
 class AiChatUnavailableTest {
     @Autowired MockMvc mvc;
     @MockitoBean AuthenticationService auth;
+    @MockitoBean kr.douid.brand.work.application.port.PublicWorkSearch search;
+    @MockitoBean kr.douid.brand.work.application.port.PublicWorkSearchTerms terms;
     @Test void 매핑전_406_415는_집계제외하며_503도_요청한도_소비() throws Exception {
         mvc.perform(post("/api/public/ai-chat/stream").contentType(MediaType.TEXT_PLAIN).content("secret"))
                 .andExpect(status().isUnsupportedMediaType()).andExpect(jsonPath("$.data.code").value("UNSUPPORTED_MEDIA_TYPE"));

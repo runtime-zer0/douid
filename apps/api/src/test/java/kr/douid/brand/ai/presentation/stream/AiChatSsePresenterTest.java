@@ -43,6 +43,36 @@ class AiChatSsePresenterTest {
         presenter.failed(StopReason.LIMIT_EXCEEDED);
         verify(emitter,times(4)).send(any(SseEmitter.SseEventBuilder.class));verify(emitter).complete();
     }
+    @Test void 추천은_started와_terminal_사이에_한번만_전송하고_출력예산을_쓰지않음() throws Exception {
+        var p=Policies.defaults();
+        var limited=new AiChatPolicy(p.maxRequestBytes(),p.maxMessageCodePoints(),p.maxHistoryMessages(),
+                p.maxHistoryMessageCodePoints(),p.maxContextCodePoints(),p.rateRequests(),p.rateWindow(),
+                p.maxConcurrentStreams(),p.executionTimeout(),p.emitterTimeout(),1,1);
+        var emitter=new RecordingEmitter();var presenter=new AiChatSsePresenter(limited,emitter);
+        assertThatThrownBy(()->presenter.recommendations(java.util.List.of("a"))).isInstanceOf(StreamSink.Disconnected.class);
+        presenter.started("id");presenter.recommendations(java.util.List.of("a","b"));
+        assertThatThrownBy(()->presenter.recommendations(java.util.List.of("a"))).isInstanceOf(IllegalStateException.class);
+        presenter.delta("x");
+        presenter.completed();
+        assertThatThrownBy(()->presenter.recommendations(java.util.List.of("a"))).isInstanceOf(StreamSink.Disconnected.class);
+        assertThat(emitter.body()).contains("event:recommendations\ndata:{\"portfolioIds\":[\"a\",\"b\"]}")
+                .containsOnlyOnce("event:recommendations");
+    }
+    @Test void 종료사유가_정해진뒤의_추천은_전송하지않음() throws Exception {
+        var emitter=mock(SseEmitter.class);var execution=mock(kr.douid.brand.ai.application.AiChatExecution.class);
+        var presenter=new AiChatSsePresenter(Policies.defaults(),emitter);presenter.attach(execution);
+        presenter.started("id");when(execution.stopped()).thenReturn(true);
+        presenter.recommendations(java.util.List.of("a"));
+        verify(emitter,times(1)).send(any(SseEmitter.SseEventBuilder.class));
+    }
+    static final class RecordingEmitter extends SseEmitter {
+        private final StringBuilder out=new StringBuilder();
+        @Override public void send(SseEventBuilder builder) {
+            for(var part:builder.build()) out.append(part.getData() instanceof String s?s:
+                    new tools.jackson.databind.json.JsonMapper().writeValueAsString(part.getData()));
+        }
+        String body(){return out.toString();}
+    }
     @Test void 시작전_timeout은_SSE가_아닌_504_예외_dispatch() {
         var emitter=mock(SseEmitter.class);var presenter=new AiChatSsePresenter(Policies.defaults(),emitter);
         presenter.failed(StopReason.TIMED_OUT);presenter.failed(StopReason.FAILED);

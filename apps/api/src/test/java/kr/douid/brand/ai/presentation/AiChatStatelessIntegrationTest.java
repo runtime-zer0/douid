@@ -49,7 +49,8 @@ class AiChatStatelessIntegrationTest extends PostgresIntegrationTest {
             var policy=Policies.defaults();
             var mvc=org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(new AiChatController(
                     new kr.douid.brand.ai.application.AiChatUseCase(adapter,
-                            new kr.douid.brand.ai.infrastructure.guard.InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+                            new kr.douid.brand.ai.infrastructure.guard.InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor,
+                            new kr.douid.brand.ai.application.PortfolioContextResolver((t,l)->java.util.List.of(),t->false)),policy))
                     .addInterceptors(new kr.douid.brand.ai.presentation.stream.AiChatAsyncInterceptor()).build();
             for(boolean fail:new boolean[]{false,true}) {
                 stub.generation=e->OpenAiStubServer.reply(e,fail?500:200,fail?"application/json":"text/event-stream",

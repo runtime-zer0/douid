@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.douid.brand.work.application.port.PublicWorkSearch;
 import kr.douid.brand.work.application.port.PublicWorkSearchItem;
+import kr.douid.brand.work.application.port.PublicWorkSearchTerms;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -19,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class PublicWorkSearchQueryService implements PublicWorkSearch {
+public class PublicWorkSearchQueryService implements PublicWorkSearch, PublicWorkSearchTerms {
 
     // Phase 10 입력 예산 근거(research R10)라 설정으로 열지 않음
     private static final int MAX_TITLE_CODE_POINTS = 80;
@@ -52,6 +53,17 @@ public class PublicWorkSearchQueryService implements PublicWorkSearch {
         return queryRepository.search(groups, Math.min(limit, policy.maxResults())).stream()
                 .map(PublicWorkSearchQueryService::toItem)
                 .toList();
+    }
+
+    /**
+     * 검색어 존재 여부 확인
+     *
+     * @param text 방문자 질문 원문 (비신뢰, null·공백 허용)
+     * @return 검색어가 하나 이상이면 true, DB를 조회하지 않음
+     */
+    @Override
+    public boolean hasSearchTerms(String text) {
+        return !termResolver.resolve(text).isEmpty();
     }
 
     private static PublicWorkSearchItem toItem(PublicWorkSearchRow row) {

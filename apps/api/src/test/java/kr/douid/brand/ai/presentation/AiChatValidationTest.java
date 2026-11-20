@@ -19,7 +19,7 @@ class AiChatValidationTest {
     final BoundedChatStreamExecutor executor=new BoundedChatStreamExecutor(8);
     final AiChatPolicy policy=Policies.defaults();
     final MockMvc mvc=MockMvcBuilders.standaloneSetup(new AiChatController(new AiChatUseCase(gateway,
-            new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+            new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor,new kr.douid.brand.ai.application.PortfolioContextResolver((t,l)->java.util.List.of(),t->false)),policy))
             .setControllerAdvice(new GlobalExceptionHandler()).build();
     @AfterEach void close(){executor.close();}
     @ParameterizedTest @ValueSource(strings={"system","developer","tool","User","ASSISTANT"})
@@ -48,7 +48,7 @@ class AiChatValidationTest {
     }
     @Test void emitter_초기화실패는_source_실행없이_정리하고_후속_activation도_무해() throws Exception {
         var mvcWithGate=MockMvcBuilders.standaloneSetup(new AiChatController(new AiChatUseCase(gateway,
-                new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+                new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor,new kr.douid.brand.ai.application.PortfolioContextResolver((t,l)->java.util.List.of(),t->false)),policy))
                 .addInterceptors(new kr.douid.brand.ai.presentation.stream.AiChatAsyncInterceptor())
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
         mvcWithGate.perform(post("/api/public/ai-chat/stream").with(request->{request.setAsyncSupported(false);return request;})
