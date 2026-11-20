@@ -19,7 +19,6 @@ import kr.douid.brand.work.application.query.WorkCategoryView;
 import kr.douid.brand.work.application.query.WorkMediaView;
 import kr.douid.brand.work.application.query.WorkQueryRepository;
 import kr.douid.brand.work.domain.WorkMediaRole;
-import kr.douid.brand.work.domain.WorkVisibility;
 import static kr.douid.brand.category.domain.QCategory.category;
 import static kr.douid.brand.media.domain.QMedia.media;
 import static kr.douid.brand.work.domain.QWork.work;
@@ -176,7 +175,7 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
      * @return 공개 작업물 목록 페이지
      */
     private Page<PublicWorkListItem> findPublicWorkListInternal(String categorySlug, Pageable pageable) {
-        var predicate = work.visibility.eq(WorkVisibility.VISIBLE).and(category.visible.isTrue());
+        var predicate = PublicWorkVisibility.condition();
         if (categorySlug != null) {
             predicate = predicate.and(category.slug.eq(categorySlug));
         }
@@ -230,9 +229,7 @@ public class QuerydslWorkQueryRepositoryAdapter implements WorkQueryRepository {
                         category.id, category.name, category.slug, category.visible))
                 .from(work)
                 .innerJoin(category).on(category.id.eq(work.categoryId))
-                .where(work.slug.eq(slug)
-                        .and(work.visibility.eq(WorkVisibility.VISIBLE))
-                        .and(category.visible.isTrue()))
+                .where(work.slug.eq(slug).and(PublicWorkVisibility.condition()))
                 .fetchOne();
 
         if (basic == null) {
