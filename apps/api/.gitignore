@@ -43,6 +43,7 @@ out/
 
 ### Claude Code tooling
 .claude/
+.agents/
 .specify/
 specs/*
 !specs/007-ai-chat-foundation/
