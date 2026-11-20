@@ -4,6 +4,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.function.Consumer;
 import kr.douid.brand.ai.application.AiChatCommand;
+import kr.douid.brand.ai.application.PortfolioContext;
 import kr.douid.brand.ai.application.port.LlmGateway;
 
 /** latch로 정상·오류·취소 시점을 제어하는 테스트 전용 공급자 */
@@ -38,12 +39,15 @@ public final class ControlledLlmGateway implements LlmGateway {
         public final AtomicBoolean cancelled=new AtomicBoolean();
         private final AtomicBoolean ran=new AtomicBoolean();
         ControlledStream(Behavior behavior) {this.behavior=behavior;}
+        public volatile PortfolioContext context;
         /** 한 번만 실행되는 latch 제어 소스
+         * @param context 받은 서버 맥락 기록
          * @param delta 순차 출력
          * @throws Exception 제어 동작 오류
          */
-        @Override public void run(Consumer<String> delta) throws Exception {
+        @Override public void run(PortfolioContext context, Consumer<String> delta) throws Exception {
             if(!ran.compareAndSet(false,true)) throw new IllegalStateException();
+            this.context=context;
             entered.countDown();behavior.run(this,delta);
         }
         /** 취소 요청 관찰 */

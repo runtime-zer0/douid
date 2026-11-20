@@ -15,6 +15,7 @@ public final class AiChatExecution {
     private final StreamSink sink;
     private final ChatStreamExecutor executor;
     private final AiChatPolicy policy;
+    private final PortfolioContextResolver resolver;
     private final String requestId = UUID.randomUUID().toString();
     private final long acceptedAt = System.nanoTime();
     private final CountDownLatch activation = new CountDownLatch(1);
@@ -29,9 +30,12 @@ public final class AiChatExecution {
     private volatile Future<?> deadline;
     private volatile Future<?> future;
     private volatile Thread worker;
+    private volatile PortfolioContext.State works;
+    private volatile int recommended;
 
-    AiChatExecution(AiChatUseCase.Prepared prepared, StreamSink sink, ChatStreamExecutor executor, AiChatPolicy policy) {
-        this.prepared = prepared; this.sink = sink; this.executor = executor; this.policy = policy;
+    AiChatExecution(AiChatUseCase.Prepared prepared, StreamSink sink, ChatStreamExecutor executor, AiChatPolicy policy,
+            PortfolioContextResolver resolver) {
+        this.prepared = prepared; this.sink = sink; this.executor = executor; this.policy = policy; this.resolver = resolver;
     }
 
     /** 초기화 gate에서 대기할 실행 제출, 거부 시 미실행 자원 정리 */
@@ -89,10 +93,17 @@ public final class AiChatExecution {
             if (System.nanoTime() - acceptedAt >= policy.executionTimeout().toNanos()) stop(StopReason.TIMED_OUT);
             if (reason.get() == null) {
                 sink.started(requestId);
-                if (reason.get() == null) prepared.source().run(text -> {
+                // 제한을 통과한 요청만 검색하도록 prepare가 아닌 worker에서 Count 전에 실행
+                var context = reason.get() == null ? resolver.resolve(prepared.message()) : null;
+                if (context != null) works = context.state();
+                if (reason.get() == null) prepared.source().run(context, text -> {
                     if (reason.get() != null) throw new Stopped();
                     sink.delta(text);
                 });
+                if (reason.get() == null && !context.portfolioIds().isEmpty()) {
+                    sink.recommendations(context.portfolioIds());
+                    recommended = context.portfolioIds().size();
+                }
                 reason.compareAndSet(null, StopReason.SUCCEEDED);
             }
         } catch (StreamSink.LimitExceeded e) {
@@ -121,8 +132,9 @@ public final class AiChatExecution {
                 try { closeSource(); }
                 finally {
                     worker = null; workerExited.set(true); cancelDeadline(); cleanup();
-                    log.info("AI stream requestId={} reason={} delivered={} elapsedMs={}", requestId,
-                            reason.get(), !deliveryFailed.get(), (System.nanoTime() - acceptedAt) / 1_000_000);
+                    log.info("AI stream requestId={} reason={} delivered={} works={} recommended={} elapsedMs={}", requestId,
+                            reason.get(), !deliveryFailed.get(), works, recommended,
+                            (System.nanoTime() - acceptedAt) / 1_000_000);
                 }
             }
         }

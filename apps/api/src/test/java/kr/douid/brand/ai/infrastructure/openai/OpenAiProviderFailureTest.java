@@ -1,5 +1,7 @@
 package kr.douid.brand.ai.infrastructure.openai;
 
+import kr.douid.brand.ai.application.PortfolioContext;
+
 import static org.assertj.core.api.Assertions.*;
 import java.util.ArrayList;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -24,7 +26,7 @@ class OpenAiProviderFailureTest extends OpenAiTestSupport {
                 .thenThrow(new java.net.http.HttpConnectTimeoutException("PRIVATE_KEY_CANARY"));
         var adapter=OpenAiResponsesGateway.forLoopbackTest(properties,transport,executor,metrics,stub.endpoint());
         try(var source=adapter.prepare(new kr.douid.brand.ai.application.AiChatCommand("hello",java.util.List.of()))) {
-            assertThatThrownBy(()->source.run(s->{})).isInstanceOfSatisfying(LlmIntegrationException.class,e->{
+            assertThatThrownBy(()->source.run(PortfolioContext.noTerms(),s->{})).isInstanceOfSatisfying(LlmIntegrationException.class,e->{
                 assertThat(e.kind()).isEqualTo(CONNECT_TIMEOUT);assertThat(e.getCause()).isNull();
                 assertThat(e.toString()).doesNotContain("CANARY");
             });
@@ -35,7 +37,7 @@ class OpenAiProviderFailureTest extends OpenAiTestSupport {
     void Count거부시_생성없이_안전한_실패(int status, String kind) throws Exception {
         stub.count = e -> OpenAiStubServer.reply(e, status, "application/json", "RAW_ERROR_KEY_CANARY");
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class, e -> {
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class, e -> {
                 assertThat(e.kind().name()).isEqualTo(kind);
                 assertThat(e.getMessage()).doesNotContain("CANARY"); assertThat(e.getCause()).isNull();
             });
@@ -46,7 +48,7 @@ class OpenAiProviderFailureTest extends OpenAiTestSupport {
     void 생성거부도_재시도없이_한번(int status) throws Exception {
         stub.generation = e -> OpenAiStubServer.reply(e, status, "application/json", "PRIVATE_ERROR");
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOf(LlmIntegrationException.class);
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOf(LlmIntegrationException.class);
         }
         assertThat(stub.countRequests).hasSize(1); assertThat(stub.generationRequests).hasSize(1);
     }
@@ -56,7 +58,7 @@ class OpenAiProviderFailureTest extends OpenAiTestSupport {
         stub.generation = e -> OpenAiStubServer.reply(e, 200, "text/event-stream", incomplete);
         var deltas = new ArrayList<String>();
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(deltas::add)).isInstanceOfSatisfying(LlmIntegrationException.class,
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),deltas::add)).isInstanceOfSatisfying(LlmIntegrationException.class,
                     e -> assertThat(e.kind()).isEqualTo(INCOMPLETE_OTHER));
         }
         assertThat(deltas).containsExactly("partial"); assertThat(stub.generationRequests).hasSize(1);
@@ -64,7 +66,7 @@ class OpenAiProviderFailureTest extends OpenAiTestSupport {
     @Test void 잘못된_콘텐츠유형은_본문노출없이_실패() throws Exception {
         stub.count = e -> OpenAiStubServer.reply(e, 200, "text/html", "BODY_CANARY");
         try (var source = source()) {
-            assertThatThrownBy(() -> source.run(s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
+            assertThatThrownBy(() -> source.run(PortfolioContext.noTerms(),s -> {})).isInstanceOfSatisfying(LlmIntegrationException.class,
                     e -> assertThat(e.kind()).isEqualTo(PROTOCOL));
         }
         assertThat(stub.generationRequests).isEmpty();

@@ -2,6 +2,7 @@ package kr.douid.brand.ai.application.port;
 
 import java.util.function.Consumer;
 import kr.douid.brand.ai.application.AiChatCommand;
+import kr.douid.brand.ai.application.PortfolioContext;
 
 /** 공급자와 무관한 로컬 준비 및 단일 스트림 실행 경계 */
 public interface LlmGateway {
@@ -13,10 +14,11 @@ public interface LlmGateway {
 
     interface LlmStream extends AutoCloseable {
         /** 단일 스레드의 순차 Delta 생성, 명시적 정상 완료와 유효 텍스트 확인 후에만 정상 반환
+         * @param context Count·생성 요청에 같게 포함할 서버 맥락
          * @param delta 순차 텍스트 소비자
          * @throws Exception 실행 실패
          */
-        void run(Consumer<String> delta) throws Exception;
+        void run(PortfolioContext context, Consumer<String> delta) throws Exception;
         /** thread-safe 비차단 취소 요청, 즉시 중단 보장 없음 */
         void cancel();
         /** 실제 실행 종료 후 자원 반환, 중복 호출 허용 */

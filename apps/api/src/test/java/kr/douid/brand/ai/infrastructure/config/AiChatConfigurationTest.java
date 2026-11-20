@@ -13,7 +13,9 @@ import kr.douid.brand.shared.config.CorsProperties;
 
 class AiChatConfigurationTest {
     final ApplicationContextRunner runner=new ApplicationContextRunner()
-            .withUserConfiguration(AiChatConfig.class,Origins.class);
+            .withUserConfiguration(AiChatConfig.class,Origins.class)
+            .withBean(kr.douid.brand.work.application.port.PublicWorkSearch.class,()->(t,l)->List.of())
+            .withBean(kr.douid.brand.work.application.port.PublicWorkSearchTerms.class,()->t->false);
     @Configuration(proxyBeanMethods=false) @EnableConfigurationProperties(CorsProperties.class)
     static class Origins {}
     @Test void 명시적_가짜설정만으로_adapter를_선택하며_시작시_네트워크접근_없음() {

@@ -12,7 +12,8 @@ import kr.douid.brand.ai.testsupport.Policies;
 class AiChatUseCaseTest {
     private final LlmGateway gateway=mock(LlmGateway.class);
     private final ChatRequestGuard guard=mock(ChatRequestGuard.class);
-    private final AiChatUseCase useCase=new AiChatUseCase(gateway,guard,Policies.defaults(),mock(ChatStreamExecutor.class));
+    private final AiChatUseCase useCase=new AiChatUseCase(gateway,guard,Policies.defaults(),mock(ChatStreamExecutor.class),
+            new PortfolioContextResolver((t,l)->List.of(),t->false));
     @ParameterizedTest @NullAndEmptySource @ValueSource(strings={" ","\t\n","\u00a0\u2003"})
     void 빈_질문은_gateway_준비전에_거부(String message) {
         assertThatThrownBy(() -> useCase.prepare(new AiChatCommand(message,List.of())))

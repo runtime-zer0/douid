@@ -20,9 +20,55 @@ class AiChatExecutionTest {
     final AiChatPolicy defaults=Policies.defaults();
     @BeforeEach void setup(){when(guard.acquire()).thenReturn(lease);}
     @AfterEach void close(){if(gateway.last!=null)gateway.last.release.countDown();executor.close();}
-    AiChatExecution start(AiChatPolicy policy) {
-        var useCase=new AiChatUseCase(gateway,guard,policy,executor);
+    static final PortfolioContextResolver NO_WORKS=new PortfolioContextResolver((t,l)->List.of(),t->false);
+    static final PortfolioContextResolver FOUND=new PortfolioContextResolver((t,l)->List.of(
+            new kr.douid.brand.work.application.port.PublicWorkSearchItem("cafe-a","카페 A",null,"브랜딩","branding"),
+            new kr.douid.brand.work.application.port.PublicWorkSearchItem("cafe-b","카페 B",null,"브랜딩","branding")),t->true);
+    AiChatExecution start(AiChatPolicy policy) { return start(policy,NO_WORKS); }
+    AiChatExecution start(AiChatPolicy policy,PortfolioContextResolver resolver) {
+        var useCase=new AiChatUseCase(gateway,guard,policy,executor,resolver);
         return useCase.start(useCase.prepare(new AiChatCommand("hi",List.of())),sink,e->{});
+    }
+    @Test void 결과가_있으면_생성_정상완료후_completed_직전에_검색결과_slug만_추천() throws Exception {
+        gateway.behavior=(stream,delta)->delta.accept("not-a-result 슬러그도 섞인 답변");
+        var execution=start(defaults,FOUND);execution.activate();
+        verify(sink,timeout(3000)).completed();
+        var order=inOrder(sink);
+        order.verify(sink).started(anyString());order.verify(sink).delta(anyString());
+        order.verify(sink).recommendations(List.of("cafe-a","cafe-b"));order.verify(sink).completed();
+        assertThat(gateway.last.context.state()).isEqualTo(PortfolioContext.State.FOUND);
+        execution.transportCompleted();
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings={"NO_TERMS","EMPTY","FAILED"})
+    void 결과가_없거나_실패하면_추천없이_정상완료(String state) throws Exception {
+        PortfolioContextResolver resolver=switch(state){
+            case "NO_TERMS"->NO_WORKS;
+            case "EMPTY"->new PortfolioContextResolver((t,l)->List.of(),t->true);
+            default->new PortfolioContextResolver((t,l)->{throw new kr.douid.brand.work.application.port.PublicWorkSearchException(new RuntimeException());},t->true);
+        };
+        var execution=start(defaults,resolver);execution.activate();
+        verify(sink,timeout(3000)).completed();
+        verify(sink,never()).recommendations(any());
+        assertThat(gateway.last.context.state().name()).isEqualTo(state);
+        execution.transportCompleted();
+    }
+    @org.junit.jupiter.params.ParameterizedTest @org.junit.jupiter.params.provider.ValueSource(booleans={true,false})
+    void 생성이_실패하거나_출력한도를_넘으면_추천하지않음(boolean providerFailure) throws Exception {
+        RuntimeException failure=providerFailure
+                ?new LlmIntegrationException(LlmIntegrationException.Kind.PROVIDER_FAILED):new StreamSink.LimitExceeded();
+        gateway.behavior=(stream,delta)->{throw failure;};
+        var execution=start(defaults,FOUND);execution.activate();
+        verify(sink,timeout(3000)).failed(any());
+        verify(sink,never()).recommendations(any());verify(sink,never()).completed();
+        execution.transportCompleted();
+    }
+    @Test void 추천_전송이_끊기면_completed를_보내지않음() throws Exception {
+        doThrow(new StreamSink.Disconnected()).when(sink).recommendations(any());
+        var execution=start(defaults,FOUND);execution.activate();
+        assertThat(gateway.last.closed.await(3,TimeUnit.SECONDS)).isTrue();
+        verify(sink).recommendations(any());verify(sink,never()).completed();verify(sink,never()).failed(any());
+        execution.transportCompleted();
     }
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.CsvSource({"READ_IDLE_TIMEOUT,TIMED_OUT", "COUNT_TIMEOUT,TIMED_OUT",
@@ -73,7 +119,7 @@ class AiChatExecutionTest {
         execution.transportCompleted();verify(lease).close();
     }
     @Test void callback_등록중_취소와_초기화실패는_실행없이_정리() {
-        var useCase=new AiChatUseCase(gateway,guard,defaults,executor);
+        var useCase=new AiChatUseCase(gateway,guard,defaults,executor,NO_WORKS);
         var prepared=useCase.prepare(new AiChatCommand("hi",List.of()));
         assertThatThrownBy(()->useCase.start(prepared,sink,e->{throw new IllegalStateException();}))
                 .isInstanceOf(IllegalStateException.class);
@@ -108,7 +154,7 @@ class AiChatExecutionTest {
         var rejecting=mock(ChatStreamExecutor.class);
         when(rejecting.schedule(any(),any())).thenReturn(mock(Future.class));
         when(rejecting.submit(any())).thenThrow(new RejectedExecutionException());
-        var useCase=new AiChatUseCase(gateway,guard,defaults,rejecting);
+        var useCase=new AiChatUseCase(gateway,guard,defaults,rejecting,NO_WORKS);
         assertThatThrownBy(()->useCase.start(useCase.prepare(new AiChatCommand("hi",List.of())),sink,e->{}))
                 .isInstanceOfSatisfying(AiChatException.class,e->assertThat(e.getCode()).isEqualTo("AI_BUSY"));
         assertThat(gateway.last.closed.getCount()).isZero();verify(lease,times(1)).close();

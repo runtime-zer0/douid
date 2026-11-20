@@ -32,6 +32,31 @@ class PublicWorkSearchQueryServiceTest {
     }
 
     @Nested
+    class 검색어_확인 {
+
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.NullAndEmptySource
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"   ", "안녕하세요", "디자인 작업 보여줘", "포트폴리오 뭐 있어요?"})
+        void 인사나_분야없는_질문은_검색어가_없고_DB를_조회하지_않는다(String text) {
+            assertThat(service.hasSearchTerms(text)).isFalse();
+
+            verify(repository, never()).search(any(), anyInt());
+        }
+
+        // evaluation-set Q1~Q8, Q10의 검색 상태 고정 확인 (Q9는 위 케이스)
+        @org.junit.jupiter.params.ParameterizedTest
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"카페 브랜딩 작업한 거 있어요?", "패키지 디자인 사례 보여주세요",
+                "병원 인테리어 작업 있나요?", "자동차 브랜딩 해보셨어요?", "카페 로고 작업 있어요?",
+                "시크릿 호텔 리브랜딩 작업 자세히 알려주세요", "스타벅스 리브랜딩도 하셨죠?", "브랜딩 작업 추천해 주세요",
+                "아까 그거 더 알려줘"})
+        void 분야나_업종이_있는_질문은_검색어가_남고_DB를_조회하지_않는다(String text) {
+            assertThat(service.hasSearchTerms(text)).isTrue();
+
+            verify(repository, never()).search(any(), anyInt());
+        }
+    }
+
+    @Nested
     class 검색 {
 
         @Test

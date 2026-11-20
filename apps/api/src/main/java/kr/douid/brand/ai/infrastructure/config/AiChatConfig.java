@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import kr.douid.brand.ai.infrastructure.openai.OpenAiResponsesGateway;
+import kr.douid.brand.work.application.port.PublicWorkSearch;
+import kr.douid.brand.work.application.port.PublicWorkSearchTerms;
 
 /** AI Chat 정책·공급자·유한 실행 자원 연결 */
 @Configuration(proxyBeanMethods = false)
@@ -65,14 +67,24 @@ public class AiChatConfig {
         properties.validate(policy.executionTimeout());
         return new OpenAiResponsesGateway(properties, client, executor, registries.getIfAvailable(SimpleMeterRegistry::new));
     }
+    /** 공개 작업물 맥락 정책 등록, work 계약 타입은 composition root에서만 주입
+     * @param search 공개 작업물 검색 계약
+     * @param terms 검색어 존재 여부 계약
+     * @return 요청별 맥락 정책
+     */
+    @Bean public PortfolioContextResolver portfolioContextResolver(PublicWorkSearch search, PublicWorkSearchTerms terms) {
+        return new PortfolioContextResolver(search, terms);
+    }
     /** application 수락 경계 등록
      * @param gateway 공급자 준비 경계
      * @param guard 요청 제한
      * @param policy 불변 정책
      * @param executor 유한 실행 경계
+     * @param resolver 공개 작업물 맥락 정책
      * @return 검증·수락 use case
      */
-    @Bean public AiChatUseCase aiChatUseCase(LlmGateway gateway, ChatRequestGuard guard, AiChatPolicy policy, ChatStreamExecutor executor) {
-        return new AiChatUseCase(gateway, guard, policy, executor);
+    @Bean public AiChatUseCase aiChatUseCase(LlmGateway gateway, ChatRequestGuard guard, AiChatPolicy policy,
+            ChatStreamExecutor executor, PortfolioContextResolver resolver) {
+        return new AiChatUseCase(gateway, guard, policy, executor, resolver);
     }
 }

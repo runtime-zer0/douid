@@ -26,7 +26,7 @@ class AiChatPrivacyTest {
                     new io.micrometer.core.instrument.simple.SimpleMeterRegistry(),stub.endpoint());
             var policy=Policies.defaults();
             var mvc=MockMvcBuilders.standaloneSetup(new AiChatController(new AiChatUseCase(gateway,
-                    new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+                    new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor,new PortfolioContextResolver((t,l)->java.util.List.of(),t->false)),policy))
                     .addInterceptors(new AiChatAsyncInterceptor()).setControllerAdvice(new GlobalExceptionHandler()).build();
             for(boolean fail:new boolean[]{false,true}) {
                 stub.generation=e->OpenAiStubServer.reply(e,fail?500:200,fail?"application/json":"text/event-stream",
@@ -47,7 +47,7 @@ class AiChatPrivacyTest {
         var policy=Policies.defaults();
         try(var executor=new BoundedChatStreamExecutor(8)) {
             var mvc=MockMvcBuilders.standaloneSetup(new AiChatController(new AiChatUseCase(gateway,
-                    new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor),policy))
+                    new InMemoryChatRequestGuard(policy,System::nanoTime),policy,executor,new PortfolioContextResolver((t,l)->java.util.List.of(),t->false)),policy))
                     .addInterceptors(new AiChatAsyncInterceptor()).setControllerAdvice(new GlobalExceptionHandler()).build();
             var result=mvc.perform(post("/api/public/ai-chat/stream").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"message\":\"QUESTION_CANARY\",\"history\":[{\"role\":\"assistant\",\"content\":\"HISTORY_CANARY\"}]}"))
@@ -62,6 +62,27 @@ class AiChatPrivacyTest {
             assertThat(output.getAll()).doesNotContain("QUESTION_CANARY","HISTORY_CANARY","ANSWER_CANARY",
                     "KEY_EXCEPTION_CANARY","JSON_PARSE_CANARY");
             assertThat(output.getAll()).contains("AI stream requestId=");
+        }
+    }
+    @Test void 추천_경로의_질문_slug_블록이_로그와_Metric에_미노출(CapturedOutput output) throws Exception {
+        var gateway=new ControlledLlmGateway();
+        gateway.behavior=(s,d)->d.accept("답변");
+        var policy=Policies.defaults();
+        var meters=new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        var resolver=new PortfolioContextResolver((t,l)->java.util.List.of(new kr.douid.brand.work.application.port
+                .PublicWorkSearchItem("SLUG_CANARY","TITLE_CANARY",null,"브랜딩","branding")),t->true);
+        try(var executor=new BoundedChatStreamExecutor(8)) {
+            var mvc=MockMvcBuilders.standaloneSetup(new AiChatController(new AiChatUseCase(gateway,
+                    new InMemoryChatRequestGuard(policy,System::nanoTime,meters),policy,executor,resolver),policy))
+                    .addInterceptors(new AiChatAsyncInterceptor()).setControllerAdvice(new GlobalExceptionHandler()).build();
+            var result=mvc.perform(post("/api/public/ai-chat/stream").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"message\":\"QUESTION_CANARY 브랜딩\"}")).andReturn();result.getAsyncResult(3000);
+            String body=mvc.perform(asyncDispatch(result)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+            assertThat(body).contains("event:recommendations","SLUG_CANARY","event:completed");
+            assertThat(output.getAll()).doesNotContain("QUESTION_CANARY","SLUG_CANARY","TITLE_CANARY","공개 작업물 검색 결과")
+                    .contains("works=FOUND recommended=1");
+            for(var meter:meters.getMeters()) assertThat(meter.getId().toString())
+                    .doesNotContain("QUESTION_CANARY","SLUG_CANARY","TITLE_CANARY");
         }
     }
 }

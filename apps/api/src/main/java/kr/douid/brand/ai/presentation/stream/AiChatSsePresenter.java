@@ -2,6 +2,7 @@ package kr.douid.brand.ai.presentation.stream;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.function.BooleanSupplier;
 import org.springframework.http.MediaType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -14,6 +15,7 @@ public final class AiChatSsePresenter implements StreamSink {
     private final SseEmitter emitter;
     private boolean started;
     private boolean terminal;
+    private boolean recommended;
     private volatile boolean disconnected;
     private long outputBytes;
     private int deltas;
@@ -68,6 +70,18 @@ public final class AiChatSsePresenter implements StreamSink {
         send("message_delta", new Delta(text)); outputBytes += bytes; deltas++;
     }
 
+    /** 추천 slug 한 번 전송, 출력 예산에 포함하지 않음
+     * @param portfolioIds 검증된 공개 작업물 slug
+     */
+    @Override
+    public synchronized void recommendations(List<String> portfolioIds) {
+        if (terminal || disconnected || !started) throw new Disconnected();
+        if (stopped.getAsBoolean()) return;
+        if (recommended) throw new IllegalStateException("Recommendations already sent");
+        recommended = true;
+        send("recommendations", new Recommendations(portfolioIds));
+    }
+
     /** 정상 terminal 한 번 전송 후 연결 종료 요청 */
     @Override
     public synchronized void completed() {
@@ -107,6 +121,7 @@ public final class AiChatSsePresenter implements StreamSink {
     }
     public record Started(String requestId) {}
     public record Delta(String text) {}
+    public record Recommendations(List<String> portfolioIds) {}
     public record Completed(String status) {}
     public record Error(String code, String message, boolean retryable) {}
 }

@@ -13,18 +13,22 @@ public final class AiChatUseCase {
     private final ChatRequestGuard guard;
     private final AiChatPolicy policy;
     private final ChatStreamExecutor executor;
+    private final PortfolioContextResolver resolver;
 
     /** 검증·수락 의존성 구성
      * @param gateway 로컬 준비 경계
      * @param guard 요청 및 점유 제한
      * @param executor 유한 실행 경계
      * @param policy 불변 정책
+     * @param resolver worker에서 실행할 공개 작업물 맥락 정책
      */
-    public AiChatUseCase(LlmGateway gateway, ChatRequestGuard guard, AiChatPolicy policy, ChatStreamExecutor executor) {
+    public AiChatUseCase(LlmGateway gateway, ChatRequestGuard guard, AiChatPolicy policy, ChatStreamExecutor executor,
+            PortfolioContextResolver resolver) {
         this.gateway = gateway;
         this.guard = guard;
         this.policy = policy;
         this.executor = executor;
+        this.resolver = resolver;
     }
 
     /** 요청 시도 소비 */
@@ -51,7 +55,7 @@ public final class AiChatUseCase {
         if (context > policy.maxContextCodePoints()) throw AiChatException.invalid();
         var source = gateway.prepare(command);
         try {
-            return new Prepared(source, guard.acquire());
+            return new Prepared(source, guard.acquire(), command.message());
         } catch (RuntimeException e) {
             try { source.close(); } catch (RuntimeException ignored) { }
             throw e;
@@ -66,7 +70,7 @@ public final class AiChatUseCase {
      */
     public AiChatExecution start(Prepared prepared, StreamSink sink,
             Consumer<AiChatExecution> callbacks) {
-        var execution = new AiChatExecution(prepared, sink, executor, policy);
+        var execution = new AiChatExecution(prepared, sink, executor, policy, resolver);
         try {
             callbacks.accept(execution);
             execution.start();
@@ -82,7 +86,7 @@ public final class AiChatUseCase {
         return text == null || text.codePoints().allMatch(c -> Character.isWhitespace(c) || Character.isSpaceChar(c));
     }
 
-    public record Prepared(LlmGateway.LlmStream source, ChatRequestGuard.Lease lease) implements AutoCloseable {
+    public record Prepared(LlmGateway.LlmStream source, ChatRequestGuard.Lease lease, String message) implements AutoCloseable {
         /** 미실행 준비 자원과 점유 반환 */
         @Override
         public void close() {
