@@ -87,7 +87,8 @@ class OpenAiBudgetTest extends OpenAiTestSupport {
         System.out.printf("budget instructions+block=%d cp, block=%d cp, clientContent=%d B, count=%d B, generation=%d B%n",
                 instructionCodePoints,context.block().codePointCount(0,context.block().length()),clientBytes,
                 requests.count().length,requests.generation().length);
-        assertThat(instructionCodePoints).isLessThanOrEqualTo(4558);
+        // research R5: 50턴 자연 대화 2,547 Token에서 당시 지시문 735를 뺀 1,812를 이력 몫으로 두고 Token ≤ code point로 가정
+        assertThat(instructionCodePoints).isLessThanOrEqualTo(8192 - (2547 - 735));
         assertThat(clientBytes).isGreaterThanOrEqualTo(15900);
         assertThat(requests.generation().length).isLessThan(32768);
     }
