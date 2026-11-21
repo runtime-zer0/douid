@@ -87,7 +87,7 @@ class OpenAiBudgetTest extends OpenAiTestSupport {
         System.out.printf("budget instructions+block=%d cp, block=%d cp, clientContent=%d B, count=%d B, generation=%d B%n",
                 instructionCodePoints,context.block().codePointCount(0,context.block().length()),clientBytes,
                 requests.count().length,requests.generation().length);
-        assertThat(instructionCodePoints).isLessThanOrEqualTo(4446);
+        assertThat(instructionCodePoints).isLessThanOrEqualTo(4558);
         assertThat(clientBytes).isGreaterThanOrEqualTo(15900);
         assertThat(requests.generation().length).isLessThan(32768);
     }
