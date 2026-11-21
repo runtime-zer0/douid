@@ -62,7 +62,17 @@ class PlainTextAnswerEvaluationTest {
         evaluate(HISTORY_QUESTIONS);
     }
 
+    // #79: 긴 이력 뒤 재요청에서 검색 결과 대신 이력 안내만 답하는 빈도 확인
+    @Test
+    void 긴_이력_뒤_작업물_재요청이_검색결과로_답하는지_출력한다() throws Exception {
+        evaluate(List.of(HISTORY_QUESTIONS.get(1)), 8);
+    }
+
     private void evaluate(List<Question> questions) throws Exception {
+        evaluate(questions, REPEATS);
+    }
+
+    private void evaluate(List<Question> questions, int repeats) throws Exception {
         var properties = new OpenAiProperties();
         properties.setEnabled(true);
         properties.setApiKey(System.getenv("OPENAI_API_KEY"));
@@ -73,7 +83,7 @@ class PlainTextAnswerEvaluationTest {
             var gateway = new OpenAiResponsesGateway(properties, client, executor, metrics);
             for (var question : questions) {
                 var resolver = new PortfolioContextResolver((text, limit) -> WORKS, text -> question.terms());
-                for (int repeat = 1; repeat <= REPEATS; repeat++) {
+                for (int repeat = 1; repeat <= repeats; repeat++) {
                     var context = resolver.resolve(question.text());
                     var answer = new StringBuilder();
                     try (var source = gateway.prepare(new AiChatCommand(question.text(), question.history()))) {
@@ -83,8 +93,9 @@ class PlainTextAnswerEvaluationTest {
                     var matcher = MARKDOWN.matcher(text);
                     boolean markdown = matcher.find();
                     if (markdown) markdownAnswers++;
-                    System.out.printf("EVAL %s#%d history=%d markdown=%s%s%n----%n%s%n====%n", question.id(), repeat,
-                            question.history().size(), markdown,
+                    long mentioned = WORKS.stream().filter(work -> text.contains(work.title())).count();
+                    System.out.printf("EVAL %s#%d history=%d mentioned=%d/%d markdown=%s%s%n----%n%s%n====%n", question.id(), repeat,
+                            question.history().size(), mentioned, WORKS.size(), markdown,
                             markdown ? " first=" + matcher.group().strip() : "", text);
                 }
             }
