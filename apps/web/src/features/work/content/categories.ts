@@ -18,7 +18,7 @@ export type WorkCategory = {
   summary: string | null;
 };
 
-/** 승인된 WORK 분류 6개, 배열 순서가 표시 순서 */
+/** 승인된 WORK 분류 6개, 정적 모드(API_ORIGIN 미설정) 원천, 서버 모드는 서버 공개 카테고리만 사용 */
 export const WORK_CATEGORIES: readonly WorkCategory[] = [
   { id: "WORK_CAT_01_BRANDING", order: 1, slug: "branding", name: "Branding", summary: null },
   { id: "WORK_CAT_02_PACKAGING_DESIGN", order: 2, slug: "packaging-design", name: "Packaging Design", summary: null },

@@ -17,9 +17,8 @@ export function validateCatalog(categories: readonly WorkCategory[], projects: r
     if (seen.has(project.id)) errors.push(`중복 프로젝트 ID: ${project.id}`);
     seen.add(project.id);
     if (!PROJECT_ID.test(project.id)) errors.push(`프로젝트 ID 형식 오류: ${project.id}`);
-    if (project.categoryIds.length === 0) errors.push(`${project.id}: 카테고리 없음`);
-    for (const categoryId of project.categoryIds) {
-      if (!categoryIds.has(categoryId)) errors.push(`${project.id}: 존재하지 않는 카테고리 ${categoryId}`);
+    if (!categoryIds.has(project.categoryId)) {
+      errors.push(`${project.id}: 존재하지 않는 카테고리 ${project.categoryId}`);
     }
     if (project.status !== "published") continue;
     if (project.media.length === 0) errors.push(`${project.id}: 공개 프로젝트에 미디어 없음`);
