@@ -2,13 +2,13 @@ import Link from "next/link";
 
 import { cn } from "@/shared/lib/utils";
 
-import type { PortfolioProject } from "../content/projects";
 import { projectHref } from "../content/routes";
+import type { PublicWorkSummary } from "../model/types";
 import { ProjectImage } from "./ProjectImage";
 import { FOCUS_RING } from "./styles";
 
-/** 카테고리의 공개 프로젝트 목록, 없으면 빈 상태 */
-export function ProjectList({ projects }: { projects: readonly PortfolioProject[] }) {
+/** 카테고리의 공개 작업물 목록, 없으면 빈 상태 */
+export function ProjectList({ projects }: { projects: readonly PublicWorkSummary[] }) {
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-start gap-4 py-16">
@@ -23,10 +23,11 @@ export function ProjectList({ projects }: { projects: readonly PortfolioProject[
   return (
     <ul className="grid gap-10 sm:grid-cols-2">
       {projects.map((project) => (
-        <li key={project.id}>
-          <Link href={projectHref(project.id)} className={cn(FOCUS_RING, "flex flex-col gap-3 hover:opacity-80")}>
-            {project.media[0] && <ProjectImage media={project.media[0]} />}
+        <li key={project.slug}>
+          <Link href={projectHref(project.slug)} className={cn(FOCUS_RING, "flex flex-col gap-3 hover:opacity-80")}>
+            {project.thumbnail && <ProjectImage image={project.thumbnail} />}
             <span className="text-lg break-words">{project.title}</span>
+            {project.summary && <span className="text-sm break-words text-muted-foreground">{project.summary}</span>}
           </Link>
         </li>
       ))}

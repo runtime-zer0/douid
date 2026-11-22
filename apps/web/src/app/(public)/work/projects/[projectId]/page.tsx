@@ -2,22 +2,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ProjectDetail } from "@/features/work";
-import { getProjectCategories, getPublishedProject, getPublishedProjects } from "@/features/work/server";
+import { getWork } from "@/features/work/server";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return getPublishedProjects().map((project) => ({ projectId: project.id }));
-}
+// generateStaticParams 없음: 빈 목록이라도 두면 SSG로 분류돼 서버 모드의 요청 시점 조회(connection)가 실패
 
 export async function generateMetadata({ params }: PageProps<"/work/projects/[projectId]">): Promise<Metadata> {
-  const project = getPublishedProject((await params).projectId);
+  const project = await getWork((await params).projectId);
   return { title: project?.title };
 }
 
 export default async function ProjectPage({ params }: PageProps<"/work/projects/[projectId]">) {
-  const project = getPublishedProject((await params).projectId);
+  const project = await getWork((await params).projectId);
   if (!project) notFound();
 
-  return <ProjectDetail project={project} categories={getProjectCategories(project)} />;
+  return <ProjectDetail project={project} />;
 }

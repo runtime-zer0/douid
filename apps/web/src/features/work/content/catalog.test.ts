@@ -9,7 +9,8 @@ import { type PortfolioProject, PROJECTS } from "./projects";
 const validProject: PortfolioProject = {
   id: "fixture-project",
   title: "Fixture Project",
-  categoryIds: ["WORK_CAT_01_BRANDING"],
+  categoryId: "WORK_CAT_01_BRANDING",
+  summary: null,
   status: "published",
   description: null,
   media: [{ src: "/work/fixture-project/cover.jpg", width: 1600, height: 900, alt: "fixture cover", rightsCleared: true }],
@@ -64,15 +65,9 @@ describe("validateCatalog", () => {
   });
 
   it("존재하지 않는 카테고리 참조 거부", () => {
-    const project = { ...validProject, categoryIds: ["WORK_CAT_99_UNKNOWN"] } as unknown as PortfolioProject;
+    const project = { ...validProject, categoryId: "WORK_CAT_99_UNKNOWN" } as unknown as PortfolioProject;
     expect(validateCatalog(WORK_CATEGORIES, [project])).toEqual([
       "fixture-project: 존재하지 않는 카테고리 WORK_CAT_99_UNKNOWN",
-    ]);
-  });
-
-  it("카테고리 없는 프로젝트 거부", () => {
-    expect(validateCatalog(WORK_CATEGORIES, [{ ...validProject, categoryIds: [] }])).toEqual([
-      "fixture-project: 카테고리 없음",
     ]);
   });
 
@@ -108,7 +103,7 @@ describe("CRT 슬롯 예약", () => {
     expect(ch01.map((slot) => [slot.id, slot.target])).toEqual(
       WORK_CATEGORIES.map((category, index) => [
         `CH01_CRT_SLOT_0${index + 1}`,
-        { kind: "WORK_CATEGORY", categoryId: category.id },
+        { kind: "WORK_CATEGORY", categorySlug: category.slug },
       ]),
     );
   });
