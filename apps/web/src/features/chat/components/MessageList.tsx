@@ -124,7 +124,7 @@ function AssistantBubble({
         </Button>
       ) : null}
       {cards.length > 0 ? (
-        <ul aria-label="추천 작업물" className="flex flex-col gap-1 border-t border-border pt-2">
+        <ul aria-label="관련 작업물" className="flex flex-col gap-1 border-t border-border pt-2">
           {cards.map((card) => (
             <li key={card.id}>
               <Link href={card.href} className="underline underline-offset-4 hover:text-muted-foreground">
