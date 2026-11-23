@@ -208,7 +208,7 @@ describe("추천", () => {
 
     await ask(user);
 
-    const list = await screen.findByRole("list", { name: "추천 작업물" });
+    const list = await screen.findByRole("list", { name: "관련 작업물" });
     expect(within(list).getAllByRole("link")).toHaveLength(1);
     expect(within(list).getByRole("link", { name: "공개 작업 A" })).toHaveAttribute("href", "/work/projects/published-a");
   });
@@ -224,7 +224,7 @@ describe("추천", () => {
     expect(await screen.findByText("/work/projects/fake 참고")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("답변이 완료됐어요"));
     expect(within(dialog).queryByRole("link")).toBeNull();
-    expect(screen.queryByRole("list", { name: "추천 작업물" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "관련 작업물" })).toBeNull();
   });
 });
 
